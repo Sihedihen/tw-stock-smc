@@ -3,14 +3,13 @@
     "code": "6274",
     "name": "台燿",
     "price": 1620.0,
-    "momentum_6m": 89.9,
+    "momentum_6m": 89.88,
     "pattern": "雙底結構 (Double Bottom)",
-    "patternDesc": "雙重支撐驗證 1275.0，頸線回踩確認",
-    "macdDivergence": "日線底背離確認 (Bullish Divergence)",
-    "weeklyMacd": "周線多頭零軸上",
+    "patternDesc": "雙重支撐 1275.0 回踩確認",
+    "macdStatus": "日線底背離 (Bullish Div) / 周線多頭零軸上",
     "dailyFVG": "無回測缺口",
     "entryZone": "1571.4 - 1603.8",
-    "sl": 1255.9,
+    "sl": 1255.88,
     "tp": 1674.0,
     "rr": "0.15",
     "history": [
@@ -140,13 +139,12 @@
     "code": "3324",
     "name": "雙鴻",
     "price": 1505.0,
-    "momentum_6m": 57.7,
-    "pattern": "多頭箱體收斂",
-    "patternDesc": "區間 1055.0 ~ 1750.0 縮量消化套牢盤",
-    "macdDivergence": "日線底背離確認 (Bullish Divergence)",
-    "weeklyMacd": "周線多頭零軸上",
+    "momentum_6m": 57.75,
+    "pattern": "箱體震盪收斂",
+    "patternDesc": "區間 1240.0 ~ 1750.0 蓄勢整理",
+    "macdStatus": "日線底背離 (Bullish Div) / 周線多頭零軸上",
     "dailyFVG": "無回測缺口",
-    "entryZone": "1459.8 - 1490.0",
+    "entryZone": "1459.85 - 1489.95",
     "sl": 1221.4,
     "tp": 1890.0,
     "rr": "1.36",
@@ -279,9 +277,8 @@
     "price": 3440.0,
     "momentum_6m": 49.8,
     "pattern": "上升三角 (Ascending Triangle)",
-    "patternDesc": "上方承壓 3600.0，低點持續墊高，強勢蓄勢突破",
-    "macdDivergence": "日線底背離確認 (Bullish Divergence)",
-    "weeklyMacd": "周線多頭零軸上",
+    "patternDesc": "壓制頸線約 3600.0，低點抬高蓄勢向上",
+    "macdStatus": "日線底背離 (Bullish Div) / 周線多頭零軸上",
     "dailyFVG": "無回測缺口",
     "entryZone": "3336.8 - 3405.6",
     "sl": 3053.5,
@@ -414,14 +411,13 @@
     "code": "2383",
     "name": "台光電",
     "price": 5185.0,
-    "momentum_6m": 44.5,
-    "pattern": "多頭箱體收斂",
-    "patternDesc": "區間 4635.0 ~ 5932.9 縮量消化套牢盤",
-    "macdDivergence": "日線底背離確認 (Bullish Divergence)",
-    "weeklyMacd": "周線多頭零軸上",
+    "momentum_6m": 44.48,
+    "pattern": "箱體震盪收斂",
+    "patternDesc": "區間 4635.0 ~ 5645.0 蓄勢整理",
+    "macdStatus": "日線底背離 (Bullish Div) / 周線多頭零軸上",
     "dailyFVG": "無回測缺口",
-    "entryZone": "5029.4 - 5133.1",
-    "sl": 4565.5,
+    "entryZone": "5029.45 - 5133.15",
+    "sl": 4565.48,
     "tp": 5886.0,
     "rr": "1.13",
     "history": [
@@ -431,15 +427,15 @@
       },
       {
         "date": "08/21",
-        "close": 5654.2
+        "close": 5654.18
       },
       {
         "date": "08/24",
-        "close": 5405.3
+        "close": 5405.32
       },
       {
         "date": "08/25",
-        "close": 5569.6
+        "close": 5569.57
       },
       {
         "date": "08/26",
@@ -551,11 +547,10 @@
     "code": "8996",
     "name": "高力",
     "price": 1510.0,
-    "momentum_6m": 35.4,
-    "pattern": "多頭箱體收斂",
-    "patternDesc": "區間 1140.0 ~ 1665.0 縮量消化套牢盤",
-    "macdDivergence": "日線底背離確認 (Bullish Divergence)",
-    "weeklyMacd": "周線多頭零軸上",
+    "momentum_6m": 35.43,
+    "pattern": "箱體震盪收斂",
+    "patternDesc": "區間 1170.0 ~ 1665.0 蓄勢整理",
+    "macdStatus": "日線底背離 (Bullish Div) / 周線多頭零軸上",
     "dailyFVG": "1560.0 ~ 1565.0",
     "entryZone": "1560.0 - 1565.0",
     "sl": 1182.0,
@@ -688,14 +683,13 @@
     "code": "2436",
     "name": "偉詮電",
     "price": 76.0,
-    "momentum_6m": 23.4,
-    "pattern": "雙底結構 (Double Bottom)",
-    "patternDesc": "雙重支撐驗證 64.1，頸線回踩確認",
-    "macdDivergence": "日線底背離確認 (Bullish Divergence)",
-    "weeklyMacd": "周線金叉突破 (HTF Golden Cross)",
+    "momentum_6m": 23.44,
+    "pattern": "箱體震盪收斂",
+    "patternDesc": "區間 64.1 ~ 77.5 蓄勢整理",
+    "macdStatus": "日線底背離 (Bullish Div) / 周線多頭零軸上",
     "dailyFVG": "72.4 ~ 74.0",
     "entryZone": "72.4 - 74.0",
-    "sl": 64.6,
+    "sl": 64.62,
     "tp": 83.7,
     "rr": "0.68",
     "history": [
@@ -825,40 +819,39 @@
     "code": "2330",
     "name": "台積電",
     "price": 2500.0,
-    "momentum_6m": 22.3,
+    "momentum_6m": 22.34,
     "pattern": "雙底結構 (Double Bottom)",
-    "patternDesc": "雙重支撐驗證 2368.0，頸線回踩確認",
-    "macdDivergence": "日線底背離確認 (Bullish Divergence)",
-    "weeklyMacd": "周線多頭零軸上",
+    "patternDesc": "雙重支撐 2373.01 回踩確認",
+    "macdStatus": "日線底背離 (Bullish Div) / 周線多頭零軸上",
     "dailyFVG": "無回測缺口",
     "entryZone": "2425.0 - 2475.0",
-    "sl": 2337.4,
+    "sl": 2337.42,
     "tp": 2710.8,
     "rr": "1.30",
     "history": [
       {
         "date": "08/20",
-        "close": 2368.0
+        "close": 2368.03
       },
       {
         "date": "08/21",
-        "close": 2402.9
+        "close": 2402.93
       },
       {
         "date": "08/24",
-        "close": 2368.0
+        "close": 2368.03
       },
       {
         "date": "08/25",
-        "close": 2393.0
+        "close": 2392.96
       },
       {
         "date": "08/26",
-        "close": 2407.9
+        "close": 2407.91
       },
       {
         "date": "08/27",
-        "close": 2402.9
+        "close": 2402.93
       },
       {
         "date": "08/28",
@@ -866,11 +859,11 @@
       },
       {
         "date": "08/31",
-        "close": 2397.9
+        "close": 2397.94
       },
       {
         "date": "09/01",
-        "close": 2432.8
+        "close": 2432.84
       },
       {
         "date": "09/02",
@@ -878,35 +871,35 @@
       },
       {
         "date": "09/03",
-        "close": 2383.0
+        "close": 2382.99
       },
       {
         "date": "09/04",
-        "close": 2402.9
+        "close": 2402.93
       },
       {
         "date": "09/07",
-        "close": 2452.8
+        "close": 2452.78
       },
       {
         "date": "09/08",
-        "close": 2462.8
+        "close": 2462.75
       },
       {
         "date": "09/09",
-        "close": 2457.8
+        "close": 2457.77
       },
       {
         "date": "09/10",
-        "close": 2442.8
+        "close": 2442.81
       },
       {
         "date": "09/11",
-        "close": 2402.9
+        "close": 2402.93
       },
       {
         "date": "09/14",
-        "close": 2373.0
+        "close": 2373.01
       },
       {
         "date": "09/15",
@@ -962,16 +955,15 @@
     "code": "2359",
     "name": "所羅門",
     "price": 128.5,
-    "momentum_6m": 13.0,
-    "pattern": "多頭箱體收斂",
-    "patternDesc": "區間 125.0 ~ 151.5 縮量消化套牢盤",
-    "macdDivergence": "日線底背離確認 (Bullish Divergence)",
-    "weeklyMacd": "周線多頭零軸上",
+    "momentum_6m": 13.04,
+    "pattern": "箱體震盪收斂",
+    "patternDesc": "區間 125.0 ~ 151.5 蓄勢整理",
+    "macdStatus": "日線底背離 (Bullish Div) / 周線多頭零軸上",
     "dailyFVG": "無回測缺口",
-    "entryZone": "124.6 - 127.2",
-    "sl": 123.1,
+    "entryZone": "124.64 - 127.22",
+    "sl": 123.12,
     "tp": 145.8,
-    "rr": "3.20",
+    "rr": "3.22",
     "history": [
       {
         "date": "08/20",
@@ -1099,15 +1091,14 @@
     "code": "3583",
     "name": "辛耘",
     "price": 721.0,
-    "momentum_6m": 6.5,
-    "pattern": "多頭箱體收斂",
-    "patternDesc": "區間 664.0 ~ 818.0 縮量消化套牢盤",
-    "macdDivergence": "日線底背離確認 (Bullish Divergence)",
-    "weeklyMacd": "周線多頭零軸上",
+    "momentum_6m": 6.55,
+    "pattern": "雙底結構 (Double Bottom)",
+    "patternDesc": "雙重支撐 664.0 回踩確認",
+    "macdStatus": "日線底背離 (Bullish Div) / 周線多頭零軸上",
     "dailyFVG": "699.0 ~ 704.0",
     "entryZone": "699.0 - 704.0",
-    "sl": 654.0,
-    "tp": 803.5,
+    "sl": 654.04,
+    "tp": 803.52,
     "rr": "1.23",
     "history": [
       {
@@ -1236,15 +1227,14 @@
     "code": "1519",
     "name": "華城",
     "price": 692.0,
-    "momentum_6m": -6.7,
-    "pattern": "多頭箱體收斂",
-    "patternDesc": "區間 681.0 ~ 786.0 縮量消化套牢盤",
-    "macdDivergence": "日線動能共振",
-    "weeklyMacd": "周線低位蓄勢",
+    "momentum_6m": -6.71,
+    "pattern": "箱體震盪收斂",
+    "patternDesc": "區間 681.0 ~ 786.0 蓄勢整理",
+    "macdStatus": "日線動能共振 / 周線低位蓄勢",
     "dailyFVG": "無回測缺口",
-    "entryZone": "671.2 - 685.1",
-    "sl": 676.7,
-    "tp": 789.5,
+    "entryZone": "671.24 - 685.08",
+    "sl": 676.69,
+    "tp": 789.48,
     "rr": "6.37",
     "history": [
       {
@@ -1373,14 +1363,13 @@
     "code": "6442",
     "name": "光聖",
     "price": 1625.0,
-    "momentum_6m": -21.0,
-    "pattern": "多頭箱體收斂",
-    "patternDesc": "區間 1465.0 ~ 1920.0 縮量消化套牢盤",
-    "macdDivergence": "日線底背離確認 (Bullish Divergence)",
-    "weeklyMacd": "周線低位蓄勢",
+    "momentum_6m": -21.01,
+    "pattern": "雙底結構 (Double Bottom)",
+    "patternDesc": "雙重支撐 1465.0 回踩確認",
+    "macdStatus": "日線底背離 (Bullish Div) / 周線低位蓄勢",
     "dailyFVG": "無回測缺口",
-    "entryZone": "1576.2 - 1608.8",
-    "sl": 1443.0,
+    "entryZone": "1576.25 - 1608.75",
+    "sl": 1443.03,
     "tp": 1971.0,
     "rr": "1.90",
     "history": [
@@ -1510,15 +1499,14 @@
     "code": "4583",
     "name": "台灣精銳",
     "price": 422.5,
-    "momentum_6m": -38.1,
-    "pattern": "多頭箱體收斂",
-    "patternDesc": "區間 413.5 ~ 492.5 縮量消化套牢盤",
-    "macdDivergence": "日線底背離確認 (Bullish Divergence)",
-    "weeklyMacd": "周線低位蓄勢",
+    "momentum_6m": -38.14,
+    "pattern": "箱體震盪收斂",
+    "patternDesc": "區間 413.5 ~ 492.5 蓄勢整理",
+    "macdStatus": "日線底背離 (Bullish Div) / 周線低位蓄勢",
     "dailyFVG": "無回測缺口",
-    "entryZone": "409.8 - 418.3",
+    "entryZone": "409.82 - 418.27",
     "sl": 407.3,
-    "tp": 495.2,
+    "tp": 495.18,
     "rr": "4.78",
     "history": [
       {
