@@ -1,17 +1,22 @@
-name: 每日台股 SMC 數據自動更新
+name: 每日台股 SMC 數據自動更新與部署
 
 on:
   schedule:
-    - cron: '30 8 * * 1-5'
-  workflow_dispatch:
+    - cron: '30 8 * * 1-5'  # 台灣時間週一至週五 16:30 自動執行
+  workflow_dispatch:        # 支援手動一鍵 Run workflow
 
 permissions:
   contents: write
   pages: write
   id-token: write
 
+# 確保同時只有一個部署在進行
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
 jobs:
-  update-data:
+  update-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: 檢出儲存庫代碼
@@ -27,13 +32,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install yfinance pandas numpy
 
-      - name: 執行量化分析與回測
+      - name: 執行 SMC 量化計算與回測
         run: python update_smc.py
 
-      - name: 提交並推送最新數據
+      - name: 提交更新後的 data.json 回倉庫
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add data.json
-          git commit -m "自動更新最新 SMC 多週期數據與 MACD" || echo "無變更"
+          git commit -m "自動更新盤後 SMC 數據 [skip ci]" || echo "無變更"
           git push
+
+      - name: 設定 GitHub Pages 環境
+        uses: actions/configure-pages@v5
+
+      - name: 上傳網頁靜態成品
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: 一鍵部署至 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
