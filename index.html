@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台股全時框 SMC × 專業 K 棒 / 折線切換終端</title>
+  <title>台股全時框 SMC × 專業 K 棒 / 線圖切換終端</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -30,7 +30,7 @@
           台股全週期 SMC × 專業 K 棒 / 線圖切換量化終端
           <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">1m·5m·15m·1H 當天盤中 · 日·周·月</span>
         </h1>
-        <p class="text-xs text-slate-400">分時走勢鎖定當日盤中 · 支援 K 棒 / 線形圖雙模切換 · EMA 20/60/100 · MACD (12,26,9)</p>
+        <p class="text-xs text-slate-400">分時走勢鎖定當日盤中真實數據 · 支援 K 棒 / 線形圖雙模切換 · EMA 20/60/100 · MACD (12,26,9)</p>
       </div>
     </div>
     <button onclick="loadSMCData()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-900 font-semibold text-xs flex items-center gap-1.5 transition">
@@ -78,7 +78,7 @@
     <section class="xl:col-span-6 space-y-4">
       <div class="bg-panel rounded-xl p-4 border border-slate-800 space-y-3">
         
-        <!-- 頂部：標的資訊 + 圖表模式切換 (K棒 / 線形) + 週期切換 -->
+        <!-- 頂部切換選單 -->
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
             <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
@@ -94,7 +94,7 @@
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
-            <!-- K 棒 / 線形圖切換按鈕 -->
+            <!-- K 棒 / 線圖 切換按鈕 -->
             <div class="flex items-center bg-slate-900 p-0.5 rounded-lg border border-slate-800 font-mono text-xs">
               <button onclick="toggleChartType('candle')" id="btn-candle" class="type-btn active px-2 py-1 rounded text-slate-300 flex items-center gap-1">
                 <i data-lucide="candlestick-chart" class="w-3.5 h-3.5"></i> K棒
@@ -110,19 +110,19 @@
               <button onclick="switchTF('5m')" class="tf-btn px-1.5 py-1 rounded text-slate-400 hover:text-white" data-tf="5m">5m</button>
               <button onclick="switchTF('15m')" class="tf-btn px-1.5 py-1 rounded text-slate-400 hover:text-white" data-tf="15m">15m</button>
               <button onclick="switchTF('1h')" class="tf-btn px-1.5 py-1 rounded text-slate-400 hover:text-white" data-tf="1h">1H</button>
-              <button onclick="switchTF('1d')" class="tf-btn active px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1d">日線</button>
-              <button onclick="switchTF('1w')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1w">周線</button>
-              <button onclick="switchTF('1M')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1M">月線</button>
+              <button onclick="switchTF('1d')" class="tf-btn active px-1.5 py-1 rounded text-slate-400 hover:text-white" data-tf="1d">日線</button>
+              <button onclick="switchTF('1w')" class="tf-btn px-1.5 py-1 rounded text-slate-400 hover:text-white" data-tf="1w">周線</button>
+              <button onclick="switchTF('1M')" class="tf-btn px-1.5 py-1 rounded text-slate-400 hover:text-white" data-tf="1M">月線</button>
             </div>
           </div>
         </div>
 
-        <!-- 主圖：K 棒 / 折線走勢 Canvas -->
+        <!-- 主圖：K 棒 / 折線 Canvas -->
         <div style="position: relative; height: 240px; width: 100%;">
           <canvas id="mainCanvas"></canvas>
         </div>
 
-        <!-- 副圖：MACD (12, 26, 9) -->
+        <!-- 副圖：MACD Canvas -->
         <div class="border-t border-slate-800/80 pt-2 space-y-1">
           <div class="flex items-center justify-between text-[11px] font-mono text-slate-400">
             <span>MACD (12, 26, 9)</span>
@@ -154,12 +154,12 @@
   <script>
     let currentStock = null;
     let currentTF = '1d';
-    let chartMode = 'candle'; // 'candle' 或 'line'
+    let chartMode = 'candle';
     let analyzedResults = [];
     let mainChart = null;
     let macdChart = null;
 
-    // 自訂 Chart.js Candlestick 繪製外掛（原生繪製標準陰陽燭）
+    // 自訂 Chart.js Candlestick 繪製外掛
     const candlestickPlugin = {
       id: 'candlestickRenderer',
       afterDatasetsDraw(chart) {
@@ -185,7 +185,7 @@
           const isUp = c.close >= c.open;
           const color = isUp ? '#ef4444' : '#22c55e'; // 台股：紅漲綠跌
 
-          // 1. 畫上下影線
+          // 1. 上下影線
           ctx.strokeStyle = color;
           ctx.lineWidth = 1.5;
           ctx.beginPath();
@@ -193,7 +193,7 @@
           ctx.lineTo(x, lowY);
           ctx.stroke();
 
-          // 2. 畫實體棒
+          // 2. 實體蠟燭棒
           const candleWidth = Math.max(Math.min((chart.width / candles.length) * 0.6, 12), 4);
           ctx.fillStyle = color;
           const topY = Math.min(openY, closeY);
@@ -275,11 +275,10 @@
     function selectStock(stock) {
       currentStock = stock;
       document.getElementById("chart-symbol").innerText = `${stock.code} ${stock.name}`;
-      document.getElementById("chart-pattern-badge").innerText = stock.dailyPattern || stock.pattern || "整理結構";
+      document.getElementById("chart-pattern-badge").innerText = stock.dailyPattern || "整理結構";
       document.getElementById("backtest-tag").innerText = `歷史勝率: ${stock.winRate || '56.5%'} (PF: ${stock.profitFactor || '1.92'})`;
 
       document.getElementById("plan-details").innerHTML = `
-        <p>• <b>歷史回測表現</b>：三屏障法過去 1 年策略勝率 <b class="text-amber-400">${stock.winRate || '56.5%'}</b>，獲利因子 (Profit Factor) 為 <b class="text-cyan-400">${stock.profitFactor || '1.92'}</b>。</p>
         <p>• <b>月線 1:1 對稱延伸目標</b>：<b class="text-indigo-300">NT$ ${stock.monthly1to1TP || stock.tp}</b>${stock.fib0618 ? `（第一波減倉位 0.618 位於 NT$ ${stock.fib0618}）` : ''}。</p>
         <p>• <b>建議進場 (Entry)</b>：回測 <b class="text-cyan-400">NT$ ${stock.entryZone || stock.price}</b> 掛單分批建倉。</p>
         <p>• <b>防守止損 (SL)</b>：<b>NT$ ${stock.sl}</b>，預期大波段風盈比達 <b class="text-emerald-400">1 : ${stock.rr || '2.0'}</b>。</p>
@@ -307,181 +306,47 @@
       drawCharts();
     }
 
-    function getStockHistory(stock) {
-      if (stock.history && Array.isArray(stock.history) && stock.history.length > 0) {
-        return stock.history;
-      }
-      if (stock.timeframes && stock.timeframes['1d'] && stock.timeframes['1d'].length > 0) {
-        return stock.timeframes['1d'].map(item => ({
-          date: String(item.time).slice(5),
-          close: Number(item.close),
-          open: Number(item.open || item.close),
-          high: Number(item.high || item.close),
-          low: Number(item.low || item.close),
-          ema20: Number(item.ema20),
-          ema60: Number(item.ema60),
-          ema100: Number(item.ema100),
-          dif: Number(item.dif || 0),
-          dea: Number(item.dea || 0),
-          hist: Number(item.hist || 0)
-        }));
-      }
-      const p = Number(stock.price) || 100;
-      return Array.from({length: 25}, (_, i) => ({
-        date: `09/${i+1}`,
-        close: Number((p * (1 + (i - 12) * 0.005)).toFixed(1)),
-        open: Number((p * (1 + (i - 12) * 0.005 - 0.002)).toFixed(1)),
-        high: Number((p * (1 + (i - 12) * 0.005 + 0.006)).toFixed(1)),
-        low: Number((p * (1 + (i - 12) * 0.005 - 0.006)).toFixed(1)),
-        ema20: p,
-        ema60: p * 0.98,
-        ema100: p * 0.96,
-        dif: 0.6,
-        dea: 0.4,
-        hist: 0.4
-      }));
-    }
+    function drawCharts() {
+      if (!currentStock || !currentStock.timeframes) return;
 
-    // 依週期生成數據：1m/5m/15m/1H 嚴格鎖定【當天盤中單日走勢】
-    function buildTimeframeData(rawHistory, tf) {
+      const bars = currentStock.timeframes[currentTF] || [];
+      if (bars.length === 0) return;
+
       const hintEl = document.getElementById("intraday-hint");
-      if (['1m', '5m', '15m', '1h'].includes(tf)) {
+      if (['1m', '5m', '15m', '1h'].includes(currentTF)) {
         hintEl.innerText = "⚡ 當日盤中微觀結構 (Intraday)";
       } else {
         hintEl.innerText = "";
       }
 
-      // 日線
-      if (tf === '1d') {
-        const labels = rawHistory.map(h => h.date);
-        const closes = rawHistory.map(h => Number(h.close));
-        const ema20s = rawHistory.map(h => Number(h.ema20 || h.close));
-        const ema60s = rawHistory.map(h => Number(h.ema60 || h.close));
-        const ema100s = rawHistory.map(h => Number(h.ema100 || h.close));
+      const labels = bars.map(b => b.time);
+      const closes = bars.map(b => b.close);
+      const ema20s = bars.map(b => b.ema20);
+      const ema60s = bars.map(b => b.ema60);
+      const ema100s = bars.map(b => b.ema100);
+      const difs = bars.map(b => b.dif);
+      const deas = bars.map(b => b.dea);
+      const hists = bars.map(b => b.hist);
 
-        const candles = rawHistory.map((h, i) => {
-          const prev = i > 0 ? rawHistory[i-1].close : h.close * 0.995;
-          const o = h.open ? Number(h.open) : prev;
-          const c = Number(h.close);
-          const high = h.high ? Number(h.high) : Math.max(o, c) * 1.008;
-          const low = h.low ? Number(h.low) : Math.min(o, c) * 0.992;
-          return { open: o, close: c, high, low };
-        });
+      const candles = bars.map(b => ({
+        open: b.open,
+        high: b.high,
+        low: b.low,
+        close: b.close
+      }));
 
-        let difs = rawHistory.map(h => Number(h.dif || 0));
-        let deas = rawHistory.map(h => Number(h.dea || 0));
-        let hists = rawHistory.map(h => Number(h.hist || 0));
-
-        if (difs.every(v => v === 0)) {
-          difs = rawHistory.map(h => Number(((h.close - (h.ema20 || h.close)) * 0.4).toFixed(2)));
-          deas = difs.map(d => Number((d * 0.7).toFixed(2)));
-          hists = difs.map((d, i) => Number(((d - deas[i]) * 2).toFixed(2)));
-        }
-        return { labels, closes, candles, ema20s, ema60s, ema100s, difs, deas, hists };
-      }
-
-      // 周線 / 月線
-      if (tf === '1w' || tf === '1M') {
-        const step = tf === '1w' ? 5 : 15;
-        const labels = [], closes = [], candles = [], ema20s = [], ema60s = [], ema100s = [], difs = [], deas = [], hists = [];
-        for (let i = 0; i < rawHistory.length; i += step) {
-          const slice = rawHistory.slice(i, i + step);
-          const first = slice[0];
-          const last = slice[slice.length - 1];
-          labels.push(last.date);
-          closes.push(Number(last.close));
-          ema20s.push(Number(last.ema20 || last.close));
-          ema60s.push(Number(last.ema60 || last.close));
-          ema100s.push(Number(last.ema100 || last.close));
-
-          const o = Number(first.open || first.close);
-          const c = Number(last.close);
-          const high = Math.max(...slice.map(s => Number(s.high || s.close))) * 1.006;
-          const low = Math.min(...slice.map(s => Number(s.low || s.close))) * 0.994;
-          candles.push({ open: o, close: c, high, low });
-
-          const d = Number(((last.close - (last.ema20 || last.close)) * 0.35).toFixed(2));
-          const de = Number((d * 0.65).toFixed(2));
-          difs.push(d);
-          deas.push(de);
-          hists.push(Number(((d - de) * 2).toFixed(2)));
-        }
-        return { labels, closes, candles, ema20s, ema60s, ema100s, difs, deas, hists };
-      }
-
-      // -------------------------------------------------------------
-      // 1m, 5m, 15m, 1H：【僅呈現當天 1 天的盤中時間線】 (09:00 ~ 13:30)
-      // -------------------------------------------------------------
-      const lastClose = Number(rawHistory[rawHistory.length - 1].close);
-      const labels = [], closes = [], candles = [], ema20s = [], ema60s = [], ema100s = [], difs = [], deas = [], hists = [];
-
-      // 當天盤中點數劃分 (台股開盤 270 分鐘)
-      let timeSlots = [];
-      if (tf === '1h') {
-        timeSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '13:30'];
-      } else if (tf === '15m') {
-        timeSlots = ['09:00', '09:15', '09:30', '09:45', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30'];
-      } else if (tf === '5m') {
-        for (let m = 0; m <= 270; m += 15) {
-          const h = 9 + Math.floor(m / 60);
-          const min = m % 60;
-          timeSlots.push(`${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`);
-        }
-      } else { // 1m
-        for (let m = 0; m <= 270; m += 8) {
-          const h = 9 + Math.floor(m / 60);
-          const min = m % 60;
-          timeSlots.push(`${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`);
-        }
-      }
-
-      let cur = lastClose * (1 - (timeSlots.length * 0.001));
-      timeSlots.forEach((slot, idx) => {
-        labels.push(slot);
-        const change = (Math.sin(idx * 0.8) * 0.003 + (Math.random() - 0.48) * 0.004) * lastClose;
-        const o = Number(cur.toFixed(2));
-        const c = Number((cur + change).toFixed(2));
-        const high = Number((Math.max(o, c) + Math.random() * (lastClose * 0.004)).toFixed(2));
-        const low = Number((Math.min(o, c) - Math.random() * (lastClose * 0.004)).toFixed(2));
-        cur = c;
-
-        closes.push(c);
-        candles.push({ open: o, close: c, high, low });
-        ema20s.push(Number((c * 0.997).toFixed(2)));
-        ema60s.push(Number((c * 0.994).toFixed(2)));
-        ema100s.push(Number((c * 0.991).toFixed(2)));
-
-        const d = Number(((c - lastClose) * 0.25).toFixed(2));
-        const de = Number((d * 0.7).toFixed(2));
-        difs.push(d);
-        deas.push(de);
-        hists.push(Number(((d - de) * 2).toFixed(2)));
-      });
-
-      return { labels, closes, candles, ema20s, ema60s, ema100s, difs, deas, hists };
-    }
-
-    function drawCharts() {
-      if (!currentStock) return;
-
-      const rawHistory = getStockHistory(currentStock);
-      const tfData = buildTimeframeData(rawHistory, currentTF);
-
-      // 1. 繪製主圖 (K 棒 / 折線雙模)
+      // 1. 繪製主圖 (K 棒 / 折線)
       const ctxMain = document.getElementById("mainCanvas");
       if (mainChart) {
         mainChart.destroy();
         mainChart = null;
       }
 
-      // 構建主數據集
       const datasets = [];
-
       if (chartMode === 'line') {
-        // 折線圖模式：繪製完整走勢線 + 填充
         datasets.push({
           label: '走勢/收盤',
-          data: tfData.closes,
+          data: closes,
           borderColor: '#06b6d4',
           backgroundColor: 'rgba(6, 182, 212, 0.08)',
           borderWidth: 2,
@@ -490,10 +355,9 @@
           fill: true
         });
       } else {
-        // K 棒模式：隱形折線錨定座標軸，由自繪外掛精確渲染陰陽 K 棒
         datasets.push({
           label: 'K棒收盤',
-          data: tfData.closes,
+          data: closes,
           borderColor: 'transparent',
           backgroundColor: 'transparent',
           pointRadius: 0,
@@ -502,46 +366,23 @@
         });
       }
 
-      // 均線 EMA 20, 60, 100
       datasets.push(
-        {
-          label: 'EMA 20',
-          data: tfData.ema20s,
-          borderColor: '#f59e0b',
-          borderWidth: 1.5,
-          pointRadius: 0,
-          tension: 0.2
-        },
-        {
-          label: 'EMA 60',
-          data: tfData.ema60s,
-          borderColor: '#818cf8',
-          borderWidth: 1.5,
-          pointRadius: 0,
-          tension: 0.2
-        },
-        {
-          label: 'EMA 100',
-          data: tfData.ema100s,
-          borderColor: '#f43f5e',
-          borderWidth: 1.5,
-          pointRadius: 0,
-          tension: 0.2
-        }
+        { label: 'EMA 20', data: ema20s, borderColor: '#f59e0b', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+        { label: 'EMA 60', data: ema60s, borderColor: '#818cf8', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+        { label: 'EMA 100', data: ema100s, borderColor: '#f43f5e', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
       );
 
-      // 動態計算 Y 軸邊界（確保上下影線完整展示）
-      const allHighs = tfData.candles.map(c => c.high);
-      const allLows = tfData.candles.map(c => c.low);
+      const allHighs = candles.map(c => c.high);
+      const allLows = candles.map(c => c.low);
       const minY = Math.min(...allLows) * 0.995;
       const maxY = Math.max(...allHighs) * 1.005;
 
       mainChart = new Chart(ctxMain, {
         type: 'line',
         data: {
-          labels: tfData.labels,
+          labels: labels,
           datasets: datasets,
-          candles: tfData.candles // 傳遞給自訂 K 棒外掛
+          candles: candles
         },
         options: {
           responsive: true,
@@ -553,7 +394,7 @@
               callbacks: {
                 label: (ctx) => {
                   const idx = ctx.dataIndex;
-                  const c = tfData.candles[idx];
+                  const c = candles[idx];
                   if (chartMode === 'candle' && c) {
                     return `開: ${c.open} 高: ${c.high} 低: ${c.low} 收: ${c.close}`;
                   }
@@ -581,24 +422,24 @@
         }
       });
 
-      // 2. 繪製副圖 (MACD 能量柱 + 快慢線)
+      // 2. 繪製副圖 (MACD)
       const ctxMACD = document.getElementById("macdCanvas");
       if (macdChart) {
         macdChart.destroy();
         macdChart = null;
       }
 
-      const barColors = tfData.hists.map(v => v >= 0 ? 'rgba(34, 197, 94, 0.85)' : 'rgba(239, 68, 68, 0.85)');
+      const barColors = hists.map(v => v >= 0 ? 'rgba(34, 197, 94, 0.85)' : 'rgba(239, 68, 68, 0.85)');
 
       macdChart = new Chart(ctxMACD, {
         type: 'bar',
         data: {
-          labels: tfData.labels,
+          labels: labels,
           datasets: [
             {
               type: 'bar',
               label: 'MACD 能量柱',
-              data: tfData.hists,
+              data: hists,
               backgroundColor: barColors,
               borderWidth: 0,
               barPercentage: 0.6
@@ -606,7 +447,7 @@
             {
               type: 'line',
               label: 'DIF (12, 26)',
-              data: tfData.difs,
+              data: difs,
               borderColor: '#06b6d4',
               borderWidth: 1.5,
               pointRadius: 0,
@@ -615,7 +456,7 @@
             {
               type: 'line',
               label: 'DEA (9)',
-              data: tfData.deas,
+              data: deas,
               borderColor: '#f59e0b',
               borderWidth: 1.5,
               pointRadius: 0,
