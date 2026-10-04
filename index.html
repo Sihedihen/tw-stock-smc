@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台股多時框 ICT / SMC 策略選股終端 (周線趨勢 + 日線進場)</title>
+  <title>台股多時框 SMC × 形態學量化選股終端</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -17,33 +17,32 @@
 </head>
 <body class="min-h-screen flex flex-col p-4 md:p-6 space-y-5">
 
-  <!-- 頂部資訊 -->
   <header class="bg-panel rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 border border-slate-800">
     <div class="flex items-center space-x-3">
       <div class="p-2.5 bg-cyan-950/80 border border-cyan-500/40 rounded-lg text-cyan-400">
-        <i data-lucide="compass" class="w-5 h-5"></i>
+        <i data-lucide="shapes" class="w-5 h-5"></i>
       </div>
       <div>
         <h1 class="text-base font-bold text-slate-100 flex items-center gap-2">
-          台股多時框 SMC 選股終端
-          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">周線 HTF 趨勢 × 日線 LTF 入場</span>
+          台股 SMC × 形態學量化選股終端
+          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">周線趨勢 · 形態識別 · 精確入場點</span>
         </h1>
-        <p class="text-xs text-slate-400">聚焦近半年動能最強族群 · 周線看漲 MSS 突破 · 日線折價區 (Discount) 回測 FVG</p>
+        <p class="text-xs text-slate-400">日線上升三角 / 雙底 / 牛旗 · SMC 價值缺口 (FVG) · 嚴格風控止損 (SL)</p>
       </div>
     </div>
     <button onclick="loadSMCData()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-900 font-semibold text-xs flex items-center gap-1.5 transition">
-      <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-icon"></i> 重新載入最新多時框數據
+      <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-icon"></i> 重新載入最新分析數據
     </button>
   </header>
 
   <main class="grid grid-cols-1 xl:grid-cols-12 gap-6">
     
-    <!-- 左側：標的清單 (7 欄) -->
+    <!-- 左側清單表格 (7 欄) -->
     <section class="xl:col-span-7 space-y-4">
       <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden">
         <div class="p-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-900/60">
           <div class="text-xs font-semibold text-slate-300 flex items-center gap-2">
-            <i data-lucide="layers" class="w-4 h-4 text-cyan-400"></i> 半年強勢股 SMC 掃描池
+            <i data-lucide="list-filter" class="w-4 h-4 text-cyan-400"></i> 半年強勢股與形態清單
             <span id="scan-status" class="text-[11px] text-slate-400 font-normal">載入中...</span>
           </div>
           <div class="text-[11px] text-slate-400 font-mono" id="result-count">共 0 檔</div>
@@ -55,15 +54,15 @@
               <tr>
                 <th class="py-2.5 px-3">代號 / 標的</th>
                 <th class="py-2.5 px-2">現價</th>
-                <th class="py-2.5 px-2">近半年漲幅</th>
-                <th class="py-2.5 px-2">周線大趨勢 (HTF)</th>
-                <th class="py-2.5 px-2">日線 FVG 點位</th>
+                <th class="py-2.5 px-2">半年動能</th>
+                <th class="py-2.5 px-2">識別形態學</th>
+                <th class="py-2.5 px-2">建議入場區間</th>
                 <th class="py-2.5 px-2 text-right">風盈比</th>
               </tr>
             </thead>
             <tbody id="stock-table-body" class="divide-y divide-slate-800/60 font-mono">
               <tr>
-                <td colspan="6" class="py-12 text-center text-slate-400 text-xs">正在載入多時框資料...</td>
+                <td colspan="6" class="py-12 text-center text-slate-400 text-xs">正在載入分析數據...</td>
               </tr>
             </tbody>
           </table>
@@ -71,15 +70,16 @@
       </div>
     </section>
 
-    <!-- 右側：日線 30 日走勢與多時框交易計畫 (5 欄) -->
+    <!-- 右側圖表與深度交易計畫 (5 欄) -->
     <section class="xl:col-span-5 space-y-4">
       <div class="bg-panel rounded-xl p-4 border border-slate-800 space-y-4">
         <div class="flex items-center justify-between border-b border-slate-800 pb-3">
           <div>
             <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
               <span class="text-cyan-400 font-mono text-base" id="chart-symbol">--</span>
+              <span class="text-xs font-normal px-2 py-0.5 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-500/30" id="chart-pattern-badge">--</span>
             </h3>
-            <p class="text-xs text-slate-400 mt-0.5">近 30 個交易日真實日線走勢</p>
+            <p class="text-xs text-slate-400 mt-0.5">近 30 個交易日真實日線收盤</p>
           </div>
           <div class="text-right">
             <div class="text-base font-bold font-mono text-slate-100" id="chart-price">NT$ --</div>
@@ -91,13 +91,13 @@
           <canvas id="realtimeChart"></canvas>
         </div>
 
-        <!-- 多時框 SMC 規劃 -->
+        <!-- 點位與形態學解讀卡片 -->
         <div class="p-3.5 bg-slate-900/70 rounded-lg border border-slate-800 space-y-2 text-xs">
           <div class="text-slate-200 font-semibold flex items-center gap-1.5">
-            <i data-lucide="crosshair" class="w-3.5 h-3.5 text-cyan-400"></i> SMC 多時框交易計畫
+            <i data-lucide="target" class="w-3.5 h-3.5 text-cyan-400"></i> 交易執行點位計畫
           </div>
           <div class="text-slate-400 space-y-1.5 font-sans leading-relaxed" id="plan-details">
-            <p>• 點選左側表格中的任一股票即可載入多時框分析。</p>
+            <p>• 點選左側表格中的任一股票即可載入形態細節與入場點位分析。</p>
           </div>
         </div>
       </div>
@@ -152,11 +152,11 @@
             </span>
           </td>
           <td class="py-2.5 px-2">
-            <span class="px-1.5 py-0.5 rounded text-[10px] font-sans ${stock.weeklyTrend.includes('強多頭') ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/30' : 'bg-slate-800 text-slate-300'}">
-              ${stock.weeklyTrend}
+            <span class="px-2 py-0.5 rounded text-[10px] font-sans ${stock.pattern.includes('三角') ? 'bg-amber-950/80 text-amber-300 border border-amber-500/40' : (stock.pattern.includes('雙底') ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-slate-300')}">
+              ${stock.pattern}
             </span>
           </td>
-          <td class="py-2.5 px-2 text-indigo-300">${stock.dailyFVG}</td>
+          <td class="py-2.5 px-2 text-cyan-400 font-medium">NT$ ${stock.entryZone}</td>
           <td class="py-2.5 px-2 text-right">
             <span class="font-bold ${parseFloat(stock.rr) >= 2.0 ? 'text-emerald-400' : 'text-slate-400'}">
               1 : ${stock.rr}
@@ -170,14 +170,16 @@
 
     function selectStock(stock) {
       document.getElementById("chart-symbol").innerText = `${stock.code} ${stock.name}`;
+      document.getElementById("chart-pattern-badge").innerText = stock.pattern;
       document.getElementById("chart-price").innerText = `NT$ ${stock.price}`;
       document.getElementById("chart-return-tag").innerText = `近半年累積: +${stock.momentum_6m}%`;
 
       document.getElementById("plan-details").innerHTML = `
-        <p>• <b>周線大級別趨勢 (HTF Bias)</b>：${stock.weeklyTrend}，周線關鍵缺口：<span class="text-cyan-400 font-mono">${stock.weeklyFVG}</span>。</p>
-        <p>• <b>日線入場區域 (LTF Array)</b>：${stock.isDiscount ? '<span class="text-emerald-400 font-medium">處於日線折價區 (Discount)</span>' : '<span class="text-amber-400 font-medium">處於日線溢價/均衡區</span>'}，日線 FVG 買盤區：<span class="text-indigo-300 font-mono">${stock.dailyFVG}</span>。</p>
-        <p>• <b>防守止損位 (SL)</b>：<b>NT$ ${stock.sl}</b>（以日線波段低點為嚴格止損點）。</p>
-        <p>• <b>目標止盈位 (TP)</b>：<b>NT$ ${stock.tp}</b>（上看前高流動性池 BSL），預期風盈比達 <b class="text-emerald-400">1 : ${stock.rr}</b>。</p>
+        <p>• <b>識別形態與結構</b>：<span class="text-amber-400 font-medium">${stock.pattern}</span>（${stock.patternDesc}）。</p>
+        <p>• <b>周線大趨勢 (HTF Bias)</b>：${stock.weeklyTrend}。</p>
+        <p>• <b>建議進場點 (Suggested Entry)</b>：回踩 <b class="text-cyan-400">NT$ ${stock.entryZone}</b> 掛單分批建倉（日線 FVG 與形態頸線共振區）。</p>
+        <p>• <b>防守止損位 (SL)</b>：<b>NT$ ${stock.sl}</b>（跌破形態起漲低點即刻失效止損出場）。</p>
+        <p>• <b>目標止盈位 (TP)</b>：<b>NT$ ${stock.tp}</b>（看向外部買方流動性高點），預估風盈比達 <b class="text-emerald-400">1 : ${stock.rr}</b>。</p>
       `;
 
       renderChart(stock);
@@ -195,7 +197,7 @@
         data: {
           labels: labels,
           datasets: [{
-            label: `${stock.code} 日線走勢`,
+            label: `${stock.code} 收盤走勢`,
             data: closes,
             borderColor: '#06b6d4',
             backgroundColor: 'rgba(6, 182, 212, 0.08)',
