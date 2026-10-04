@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台股全時框 (1m-月線) SMC × 形態學 × EMA × MACD 終端</title>
+  <title>台股全時框 SMC × 形態學 × EMA × MACD 終端</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     body { background-color: #080c14; color: #cbd5e1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -14,7 +14,7 @@
     ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
     .bg-panel { background: rgba(13, 20, 36, 0.85); backdrop-filter: blur(8px); border: 1px solid #1e293b; }
     .tf-btn { transition: all 0.15s ease; cursor: pointer; }
-    .tf-btn.active { background-color: #06b6d4; color: #080c14; font-weight: bold; }
+    .tf-btn.active { background-color: #06b6d4 !important; color: #080c14 !important; font-weight: bold; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col p-4 md:p-6 space-y-5">
@@ -39,7 +39,7 @@
 
   <main class="grid grid-cols-1 xl:grid-cols-12 gap-6">
     
-    <!-- 左側清單表格 (6 欄) -->
+    <!-- 左側表格 -->
     <section class="xl:col-span-6 space-y-4">
       <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden">
         <div class="p-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-900/60">
@@ -73,11 +73,11 @@
       </div>
     </section>
 
-    <!-- 右側圖表與深度交易計畫 (6 欄) -->
+    <!-- 右側圖表區 -->
     <section class="xl:col-span-6 space-y-4">
       <div class="bg-panel rounded-xl p-4 border border-slate-800 space-y-3">
         
-        <!-- 標題與 7 個週期切換按鈕 -->
+        <!-- 標題與時框按鈕 -->
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
             <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
@@ -92,7 +92,7 @@
             </div>
           </div>
 
-          <!-- 週期按鈕 -->
+          <!-- 週期切換按鈕 -->
           <div class="flex items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800 font-mono text-xs" id="tf-selector">
             <button onclick="switchTF('1m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1m">1m</button>
             <button onclick="switchTF('5m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="5m">5m</button>
@@ -104,23 +104,23 @@
           </div>
         </div>
 
-        <!-- 主圖：價格與 EMA 均線 -->
-        <div class="relative h-56 w-full">
-          <canvas id="mainChartCanvas"></canvas>
+        <!-- 主圖 Canvas -->
+        <div style="position: relative; height: 230px; width: 100%;">
+          <canvas id="mainCanvas"></canvas>
         </div>
 
-        <!-- 副圖：MACD (12, 26, 9) -->
+        <!-- 副圖 MACD Canvas -->
         <div class="border-t border-slate-800/80 pt-2 space-y-1">
           <div class="flex items-center justify-between text-[11px] font-mono text-slate-400">
             <span>MACD (12, 26, 9)</span>
             <div class="flex items-center gap-2">
               <span class="text-cyan-400">● DIF</span>
               <span class="text-amber-400">● DEA</span>
-              <span class="text-slate-300">■ 能量柱</span>
+              <span class="text-emerald-400">■ 能量柱</span>
             </div>
           </div>
-          <div class="relative h-28 w-full">
-            <canvas id="macdChartCanvas"></canvas>
+          <div style="position: relative; height: 120px; width: 100%;">
+            <canvas id="macdCanvas"></canvas>
           </div>
         </div>
 
@@ -142,9 +142,8 @@
     let currentStock = null;
     let currentTF = '1d';
     let analyzedResults = [];
-
-    let mainChartInstance = null;
-    let macdChartInstance = null;
+    let mainChart = null;
+    let macdChart = null;
 
     async function loadSMCData() {
       const icon = document.getElementById("refresh-icon");
@@ -164,6 +163,7 @@
         }
         document.getElementById("scan-status").innerText = "數據已是最新狀態";
       } catch (err) {
+        console.error("載入出錯:", err);
         document.getElementById("scan-status").innerText = "讀取失敗";
         document.getElementById("stock-table-body").innerHTML = `
           <tr><td colspan="7" class="py-8 text-center text-rose-400">⚠ ${err.message}</td></tr>
@@ -225,7 +225,7 @@
         <p>• <b>防守止損 (SL)</b>：<b>NT$ ${stock.sl}</b>，預期大波段風盈比達 <b class="text-emerald-400">1 : ${stock.rr || '2.0'}</b>。</p>
       `;
 
-      renderAllCharts();
+      drawCharts();
     }
 
     function switchTF(tf) {
@@ -237,53 +237,53 @@
           btn.classList.remove('active');
         }
       });
-      renderAllCharts();
+      drawCharts();
     }
 
-    function extractHistory(stock) {
+    // 嚴格抽取歷史陣列
+    function getStockHistory(stock) {
       if (stock.history && Array.isArray(stock.history) && stock.history.length > 0) {
         return stock.history;
       }
       if (stock.timeframes && stock.timeframes['1d'] && stock.timeframes['1d'].length > 0) {
         return stock.timeframes['1d'].map(item => ({
           date: String(item.time).slice(5),
-          close: item.close,
-          ema20: item.ema20,
-          ema60: item.ema60,
-          ema100: item.ema100,
-          dif: item.dif,
-          dea: item.dea,
-          hist: item.hist
+          close: Number(item.close),
+          ema20: Number(item.ema20),
+          ema60: Number(item.ema60),
+          ema100: Number(item.ema100),
+          dif: Number(item.dif || 0),
+          dea: Number(item.dea || 0),
+          hist: Number(item.hist || 0)
         }));
       }
-      // 防呆預設
-      const base = Number(stock.price) || 100;
-      return Array.from({ length: 25 }, (_, i) => ({
-        date: `09/${i + 1}`,
-        close: Number((base * (1 + (i - 12) * 0.005)).toFixed(1)),
-        ema20: base,
-        ema60: base * 0.98,
-        ema100: base * 0.96,
-        dif: 0.5,
-        dea: 0.3,
-        hist: 0.4
+      const p = Number(stock.price) || 100;
+      return Array.from({length: 20}, (_, i) => ({
+        date: `09/${i+1}`,
+        close: Number((p * (1 + (i - 10) * 0.006)).toFixed(1)),
+        ema20: p,
+        ema60: p * 0.98,
+        ema100: p * 0.96,
+        dif: 0.8,
+        dea: 0.5,
+        hist: 0.6
       }));
     }
 
-    function generateTFData(history, tf) {
+    function buildTimeframeData(rawHistory, tf) {
       if (tf === '1d') {
-        const labels = history.map(h => h.date);
-        const closes = history.map(h => h.close);
-        const ema20s = history.map(h => h.ema20 || h.close);
-        const ema60s = history.map(h => h.ema60 || h.close);
-        const ema100s = history.map(h => h.ema100 || h.close);
-
-        let difs = history.map(h => typeof h.dif !== 'undefined' ? h.dif : 0);
-        let deas = history.map(h => typeof h.dea !== 'undefined' ? h.dea : 0);
-        let hists = history.map(h => typeof h.hist !== 'undefined' ? h.hist : 0);
+        const labels = rawHistory.map(h => h.date);
+        const closes = rawHistory.map(h => Number(h.close));
+        const ema20s = rawHistory.map(h => Number(h.ema20 || h.close));
+        const ema60s = rawHistory.map(h => Number(h.ema60 || h.close));
+        const ema100s = rawHistory.map(h => Number(h.ema100 || h.close));
+        
+        let difs = rawHistory.map(h => Number(h.dif || 0));
+        let deas = rawHistory.map(h => Number(h.dea || 0));
+        let hists = rawHistory.map(h => Number(h.hist || 0));
 
         if (difs.every(v => v === 0)) {
-          difs = history.map(h => Number(((h.close - (h.ema20 || h.close)) * 0.4).toFixed(2)));
+          difs = rawHistory.map(h => Number(((h.close - (h.ema20 || h.close)) * 0.4).toFixed(2)));
           deas = difs.map(d => Number((d * 0.7).toFixed(2)));
           hists = difs.map((d, i) => Number(((d - deas[i]) * 2).toFixed(2)));
         }
@@ -291,16 +291,16 @@
       }
 
       if (tf === '1w' || tf === '1M') {
-        const step = tf === '1w' ? 5 : 15;
+        const step = tf === '1w' ? 4 : 10;
         const labels = [], closes = [], ema20s = [], ema60s = [], ema100s = [], difs = [], deas = [], hists = [];
-        for (let i = 0; i < history.length; i += step) {
-          const slice = history.slice(i, i + step);
+        for (let i = 0; i < rawHistory.length; i += step) {
+          const slice = rawHistory.slice(i, i + step);
           const last = slice[slice.length - 1];
           labels.push(last.date);
-          closes.push(last.close);
-          ema20s.push(last.ema20 || last.close);
-          ema60s.push(last.ema60 || last.close);
-          ema100s.push(last.ema100 || last.close);
+          closes.push(Number(last.close));
+          ema20s.push(Number(last.ema20 || last.close));
+          ema60s.push(Number(last.ema60 || last.close));
+          ema100s.push(Number(last.ema100 || last.close));
           const d = Number(((last.close - (last.ema20 || last.close)) * 0.35).toFixed(2));
           const de = Number((d * 0.65).toFixed(2));
           difs.push(d);
@@ -310,20 +310,21 @@
         return { labels, closes, ema20s, ema60s, ema100s, difs, deas, hists };
       }
 
-      const count = tf === '1m' ? 30 : (tf === '5m' ? 24 : 20);
-      const lastClose = history[history.length - 1].close;
+      // 分鐘級別 (1m, 5m, 15m, 1h)
+      const count = tf === '1m' ? 30 : (tf === '5m' ? 24 : 18);
+      const lastClose = Number(rawHistory[rawHistory.length - 1].close);
       const labels = [], closes = [], ema20s = [], ema60s = [], ema100s = [], difs = [], deas = [], hists = [];
+      let cur = lastClose * 0.992;
 
-      let cur = lastClose * 0.99;
       for (let i = count; i >= 0; i--) {
         labels.push(`${tf}-${i}`);
-        cur += (Math.sin(i) * 0.003 + (Math.random() - 0.49) * 0.004) * lastClose;
+        cur += (Math.sin(i) * 0.002 + (Math.random() - 0.49) * 0.003) * lastClose;
         const c = Number(cur.toFixed(2));
         closes.push(c);
-        ema20s.push(Number((c * 0.997).toFixed(2)));
-        ema60s.push(Number((c * 0.994).toFixed(2)));
-        ema100s.push(Number((c * 0.991).toFixed(2)));
-        const d = Number(((c - lastClose) * 0.3).toFixed(2));
+        ema20s.push(Number((c * 0.996).toFixed(2)));
+        ema60s.push(Number((c * 0.992).toFixed(2)));
+        ema100s.push(Number((c * 0.988).toFixed(2)));
+        const d = Number(((c - lastClose) * 0.25).toFixed(2));
         const de = Number((d * 0.7).toFixed(2));
         difs.push(d);
         deas.push(de);
@@ -332,151 +333,158 @@
       return { labels, closes, ema20s, ema60s, ema100s, difs, deas, hists };
     }
 
-    function renderAllCharts() {
+    function drawCharts() {
       if (!currentStock) return;
-      const history = extractHistory(currentStock);
-      const data = generateTFData(history, currentTF);
 
-      try {
-        const ctxMain = document.getElementById("mainChartCanvas").getContext("2d");
-        if (mainChartInstance) mainChartInstance.destroy();
+      const rawHistory = getStockHistory(currentStock);
+      const tfData = buildTimeframeData(rawHistory, currentTF);
 
-        mainChartInstance = new Chart(ctxMain, {
-          type: 'line',
-          data: {
-            labels: data.labels,
-            datasets: [
-              {
-                label: '走勢/收盤',
-                data: data.closes,
-                borderColor: '#06b6d4',
-                backgroundColor: 'rgba(6, 182, 212, 0.08)',
-                borderWidth: 2,
-                tension: 0.15,
-                pointRadius: 2,
-                fill: true
-              },
-              {
-                label: 'EMA 20',
-                data: data.ema20s,
-                borderColor: '#f59e0b',
-                borderWidth: 1.5,
-                pointRadius: 0,
-                tension: 0.2
-              },
-              {
-                label: 'EMA 60',
-                data: data.ema60s,
-                borderColor: '#818cf8',
-                borderWidth: 1.5,
-                pointRadius: 0,
-                tension: 0.2
-              },
-              {
-                label: 'EMA 100',
-                data: data.ema100s,
-                borderColor: '#f43f5e',
-                borderWidth: 1.5,
-                pointRadius: 0,
-                tension: 0.2
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                callbacks: {
-                  label: (c) => `${c.dataset.label}: NT$ ${c.parsed.y}`
-                }
-              }
-            },
-            scales: {
-              x: {
-                grid: { color: 'rgba(51, 65, 85, 0.2)' },
-                ticks: { color: '#64748b', font: { family: 'monospace', size: 10 } }
-              },
-              y: {
-                grid: { color: 'rgba(51, 65, 85, 0.2)' },
-                ticks: {
-                  color: '#64748b',
-                  font: { family: 'monospace', size: 10 },
-                  callback: (v) => `NT$ ${v}`
-                }
-              }
-            }
-          }
-        });
-
-        const ctxMACD = document.getElementById("macdChartCanvas").getContext("2d");
-        if (macdChartInstance) macdChartInstance.destroy();
-
-        const histColors = data.hists.map(v => v >= 0 ? 'rgba(34, 197, 94, 0.75)' : 'rgba(239, 68, 68, 0.75)');
-
-        macdChartInstance = new Chart(ctxMACD, {
-          type: 'bar', // 明確宣告頂層型態
-          data: {
-            labels: data.labels,
-            datasets: [
-              {
-                type: 'bar',
-                label: 'MACD 能量柱',
-                data: data.hists,
-                backgroundColor: histColors,
-                borderWidth: 0,
-                barPercentage: 0.65
-              },
-              {
-                type: 'line',
-                label: 'DIF (12, 26)',
-                data: data.difs,
-                borderColor: '#06b6d4',
-                borderWidth: 1.5,
-                pointRadius: 0,
-                tension: 0.2
-              },
-              {
-                type: 'line',
-                label: 'DEA (9)',
-                data: data.deas,
-                borderColor: '#f59e0b',
-                borderWidth: 1.5,
-                pointRadius: 0,
-                tension: 0.2
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                callbacks: {
-                  label: (c) => `${c.dataset.label}: ${c.parsed.y}`
-                }
-              }
-            },
-            scales: {
-              x: {
-                grid: { display: false },
-                ticks: { display: false }
-              },
-              y: {
-                grid: { color: 'rgba(51, 65, 85, 0.15)' },
-                ticks: {
-                  color: '#64748b',
-                  font: { family: 'monospace', size: 9 }
-                }
-              }
-            }
-          }
-        });
-      } catch (err) {
-        console.error("繪圖失敗:", err);
+      // 1. 繪製主圖 (Line)
+      const mainEl = document.getElementById("mainCanvas");
+      if (mainChart) {
+        mainChart.destroy();
+        mainChart = null;
       }
+
+      mainChart = new Chart(mainEl, {
+        type: 'line',
+        data: {
+          labels: tfData.labels,
+          datasets: [
+            {
+              label: '走勢/收盤',
+              data: tfData.closes,
+              borderColor: '#06b6d4',
+              backgroundColor: 'rgba(6, 182, 212, 0.08)',
+              borderWidth: 2,
+              pointRadius: 2,
+              tension: 0.15,
+              fill: true
+            },
+            {
+              label: 'EMA 20',
+              data: tfData.ema20s,
+              borderColor: '#f59e0b',
+              borderWidth: 1.5,
+              pointRadius: 0,
+              tension: 0.2
+            },
+            {
+              label: 'EMA 60',
+              data: tfData.ema60s,
+              borderColor: '#818cf8',
+              borderWidth: 1.5,
+              pointRadius: 0,
+              tension: 0.2
+            },
+            {
+              label: 'EMA 100',
+              data: tfData.ema100s,
+              borderColor: '#f43f5e',
+              borderWidth: 1.5,
+              pointRadius: 0,
+              tension: 0.2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (c) => `${c.dataset.label}: NT$ ${c.parsed.y}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(51, 65, 85, 0.2)' },
+              ticks: { color: '#64748b', font: { family: 'monospace', size: 10 } }
+            },
+            y: {
+              grid: { color: 'rgba(51, 65, 85, 0.2)' },
+              ticks: {
+                color: '#64748b',
+                font: { family: 'monospace', size: 10 },
+                callback: (v) => `NT$ ${v}`
+              }
+            }
+          }
+        }
+      });
+
+      // 2. 繪製副圖 (MACD 柱狀體與雙線)
+      const macdEl = document.getElementById("macdCanvas");
+      if (macdChart) {
+        macdChart.destroy();
+        macdChart = null;
+      }
+
+      const barColors = tfData.hists.map(v => v >= 0 ? 'rgba(34, 197, 94, 0.85)' : 'rgba(239, 68, 68, 0.85)');
+
+      macdChart = new Chart(macdEl, {
+        type: 'bar',
+        data: {
+          labels: tfData.labels,
+          datasets: [
+            {
+              type: 'bar',
+              label: 'MACD 能量柱',
+              data: tfData.hists,
+              backgroundColor: barColors,
+              borderWidth: 0,
+              barPercentage: 0.6
+            },
+            {
+              type: 'line',
+              label: 'DIF (12, 26)',
+              data: tfData.difs,
+              borderColor: '#06b6d4',
+              borderWidth: 1.5,
+              pointRadius: 0,
+              tension: 0.2
+            },
+            {
+              type: 'line',
+              label: 'DEA (9)',
+              data: tfData.deas,
+              borderColor: '#f59e0b',
+              borderWidth: 1.5,
+              pointRadius: 0,
+              tension: 0.2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (c) => `${c.dataset.label}: ${c.parsed.y}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { display: false }
+            },
+            y: {
+              grid: { color: 'rgba(51, 65, 85, 0.15)' },
+              ticks: {
+                color: '#64748b',
+                font: { family: 'monospace', size: 9 }
+              }
+            }
+          }
+        }
+      });
     }
 
     window.addEventListener('DOMContentLoaded', () => {
