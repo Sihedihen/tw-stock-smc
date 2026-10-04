@@ -3,19 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台股全時框 SMC × 專業 K 棒終端</title>
+  <title>台股全時框 SMC × 自研高流暢互動 K 線終端</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- TradingView 官方開源輕量專業金融圖表核心 -->
-  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <style>
-    body { background-color: #080c14; color: #cbd5e1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #080c14; color: #cbd5e1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: #0b1120; }
     ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
     .bg-panel { background: rgba(13, 20, 36, 0.85); backdrop-filter: blur(8px); border: 1px solid #1e293b; }
     .stock-row.selected { background-color: rgba(6, 182, 212, 0.18) !important; border-left: 3px solid #06b6d4; }
     .tf-btn.active { background-color: #06b6d4 !important; color: #080c14 !important; font-weight: bold; }
+    canvas { display: block; cursor: crosshair; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col p-4 md:p-6 space-y-4">
@@ -27,20 +26,20 @@
       </div>
       <div>
         <h1 class="text-base font-bold text-slate-100 flex items-center gap-2">
-          台股全週期 SMC × 專業開源 K 棒終端
-          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">TradingView 開源核心 · 自由滾動拖曳</span>
+          台股全週期 SMC × 自研原生效能 K 棒終端
+          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">原生 Canvas 渲染 · 零依賴自由拖曳縮放</span>
         </h1>
-        <p class="text-xs text-slate-400">1m · 5m · 15m · 1H · 日線 · 周線 · 月線 全週期無限制 · 滾輪縮放與拖曳 · 內建 MACD 與 EMA</p>
+        <p class="text-xs text-slate-400">按住滑鼠左鍵左右拖曳平移 · 滑鼠滾輪縮放 · 全時框 1m 到月線無限制 · 聯動 MACD 與 EMA</p>
       </div>
     </div>
     <button onclick="loadSMCData()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-900 font-semibold text-xs flex items-center gap-1.5 transition">
-      <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-icon"></i> 重新載入最新分析數據
+      <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-icon"></i> 重新載入最新數據
     </button>
   </header>
 
   <main class="grid grid-cols-1 xl:grid-cols-12 gap-5 flex-1">
     
-    <!-- 左側清單表格 (5 欄寬度) -->
+    <!-- 左側股票表格 -->
     <section class="xl:col-span-5 space-y-4 flex flex-col">
       <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden flex-1">
         <div class="p-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-900/60">
@@ -79,12 +78,12 @@
           <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" id="backtest-tag">勝率: --</span>
         </div>
         <div class="text-slate-400 space-y-1.5 font-sans leading-relaxed" id="plan-details">
-          <p>• 點選上方表格任一股票，右側圖表將即刻切換該股完整 K 棒與指標。</p>
+          <p>• 點選上方表格任一股票載入即時分析。</p>
         </div>
       </div>
     </section>
 
-    <!-- 右側圖表區 (7 欄寬度) -->
+    <!-- 右側圖表區：自研原生繪圖畫布 -->
     <section class="xl:col-span-7 flex flex-col space-y-3">
       
       <!-- 頂部控制列 -->
@@ -98,37 +97,28 @@
             <span class="text-amber-400">● EMA20</span>
             <span class="text-indigo-400">● EMA60</span>
             <span class="text-rose-400">● EMA100</span>
+            <span class="text-slate-400 ml-2" id="cursor-info"></span>
           </div>
         </div>
 
-        <!-- 7 個週期切換按鈕 -->
+        <!-- 7 大時框按鈕 -->
         <div class="flex items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800 font-mono text-xs" id="tf-selector">
-          <button onclick="changeTimeframe('1m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1m">1m</button>
-          <button onclick="changeTimeframe('5m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="5m">5m</button>
-          <button onclick="changeTimeframe('15m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="15m">15m</button>
-          <button onclick="changeTimeframe('1h')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1h">1H</button>
-          <button onclick="changeTimeframe('1d')" class="tf-btn active px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1d">日線</button>
-          <button onclick="changeTimeframe('1w')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1w">周線</button>
-          <button onclick="changeTimeframe('1M')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1M">月線</button>
+          <button onclick="changeTF('1m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1m">1m</button>
+          <button onclick="changeTF('5m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="5m">5m</button>
+          <button onclick="changeTF('15m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="15m">15m</button>
+          <button onclick="changeTF('1h')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1h">1H</button>
+          <button onclick="changeTF('1d')" class="tf-btn active px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1d">日線</button>
+          <button onclick="changeTF('1w')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1w">周線</button>
+          <button onclick="changeTF('1M')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1M">月線</button>
         </div>
       </div>
 
-      <!-- 主圖：K 棒 + EMA (支援滑鼠滾輪縮放、按住拖曳) -->
-      <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden p-2 flex flex-col space-y-2">
-        <div id="candleChartBox" style="width: 100%; height: 420px;"></div>
-
-        <!-- 副圖：MACD (12, 26, 9) -->
-        <div class="border-t border-slate-800/80 pt-2">
-          <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-2 pb-1">
-            <span>MACD (12, 26, 9)</span>
-            <div class="flex items-center gap-2">
-              <span class="text-cyan-400">● DIF</span>
-              <span class="text-amber-400">● DEA</span>
-              <span class="text-emerald-400">■ 能量柱</span>
-            </div>
-          </div>
-          <div id="macdChartBox" style="width: 100%; height: 160px;"></div>
-        </div>
+      <!-- 核心畫布容器 -->
+      <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden p-2 flex flex-col space-y-1" id="chart-viewport">
+        <!-- 主圖 K 棒 Canvas -->
+        <canvas id="candleCanvas" class="w-full" height="420"></canvas>
+        <!-- 副圖 MACD Canvas -->
+        <canvas id="macdCanvas" class="w-full" height="150"></canvas>
       </div>
     </section>
 
@@ -139,81 +129,301 @@
     let currentTF = '1d';
     let analyzedResults = [];
 
-    let candleChart = null;
-    let candleSeries = null;
-    let ema20Series = null;
-    let ema60Series = null;
-    let ema100Series = null;
+    // 自研互動看盤視窗參數
+    let barWidth = 10;       // 單根 K 棒寬度 (支援滾輪放大/縮小)
+    let barSpacing = 4;      // K 棒間距
+    let offsetX = 0;         // 平移偏移量 (支援拖曳平移歷史)
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartOffset = 0;
+    let mousePos = { x: -1, y: -1, inChart: false };
 
-    let macdChart = null;
-    let histSeries = null;
-    let difSeries = null;
-    let deaSeries = null;
+    const cCanvas = document.getElementById("candleCanvas");
+    const mCanvas = document.getElementById("macdCanvas");
+    const cCtx = cCanvas.getContext("2d");
+    const mCtx = mCanvas.getContext("2d");
 
-    function initTradingViewCharts() {
-      const cBox = document.getElementById("candleChartBox");
-      const mBox = document.getElementById("macdChartBox");
+    // 事件監聽：滑鼠拖曳平移、滾輪縮放、十字線跟隨
+    function setupInteractions() {
+      const container = document.getElementById("chart-viewport");
 
-      // 1. 初始化主圖
-      candleChart = LightweightCharts.createChart(cBox, {
-        layout: { background: { color: '#0a0f1d' }, textColor: '#94a3b8' },
-        grid: {
-          vertLines: { color: 'rgba(30, 41, 59, 0.35)' },
-          horzLines: { color: 'rgba(30, 41, 59, 0.35)' },
-        },
-        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-        timeScale: {
-          borderColor: '#1e293b',
-          timeVisible: true,
-          secondsVisible: false
-        },
-        rightPriceScale: { borderColor: '#1e293b' }
+      container.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        dragStartX = e.clientX;
+        dragStartOffset = offsetX;
       });
 
-      // 台股習慣：紅漲綠跌
-      candleSeries = candleChart.addCandlestickSeries({
-        upColor: '#ef4444',
-        downColor: '#22c55e',
-        borderUpColor: '#ef4444',
-        borderDownColor: '#22c55e',
-        wickUpColor: '#ef4444',
-        wickDownColor: '#22c55e',
+      window.addEventListener("mouseup", () => {
+        isDragging = false;
       });
 
-      ema20Series = candleChart.addLineSeries({ color: '#f59e0b', lineWidth: 1.5, title: 'EMA20' });
-      ema60Series = candleChart.addLineSeries({ color: '#818cf8', lineWidth: 1.5, title: 'EMA60' });
-      ema100Series = candleChart.addLineSeries({ color: '#f43f5e', lineWidth: 1.5, title: 'EMA100' });
+      container.addEventListener("mousemove", (e) => {
+        const rect = cCanvas.getBoundingClientRect();
+        mousePos.x = e.clientX - rect.left;
+        mousePos.y = e.clientY - rect.top;
+        mousePos.inChart = true;
 
-      // 2. 初始化副圖 (MACD)
-      macdChart = LightweightCharts.createChart(mBox, {
-        layout: { background: { color: '#0a0f1d' }, textColor: '#94a3b8' },
-        grid: {
-          vertLines: { color: 'rgba(30, 41, 59, 0.25)' },
-          horzLines: { color: 'rgba(30, 41, 59, 0.25)' },
-        },
-        timeScale: { borderColor: '#1e293b', visible: false },
-        rightPriceScale: { borderColor: '#1e293b' }
-      });
-
-      histSeries = macdChart.addHistogramSeries({
-        color: '#22c55e',
-        priceFormat: { type: 'volume' }
-      });
-      difSeries = macdChart.addLineSeries({ color: '#06b6d4', lineWidth: 1.5 });
-      deaSeries = macdChart.addLineSeries({ color: '#f59e0b', lineWidth: 1.5 });
-
-      // 時間軸雙向同步
-      candleChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
-        macdChart.timeScale().setVisibleLogicalRange(range);
-      });
-      macdChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
-        candleChart.timeScale().setVisibleLogicalRange(range);
+        if (isDragging) {
+          const deltaX = e.clientX - dragStartX;
+          offsetX = dragStartOffset - deltaX;
+          requestRender();
+        } else {
+          requestRender();
+        }
       });
 
-      window.addEventListener('resize', () => {
-        candleChart.applyOptions({ width: cBox.clientWidth });
-        macdChart.applyOptions({ width: mBox.clientWidth });
+      container.addEventListener("mouseleave", () => {
+        mousePos.inChart = false;
+        requestRender();
       });
+
+      container.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
+        const newBarWidth = Math.max(3, Math.min(45, barWidth * zoomFactor));
+        barSpacing = Math.max(1, newBarWidth * 0.35);
+        barWidth = newBarWidth;
+        requestRender();
+      }, { passive: false });
+
+      window.addEventListener("resize", resizeCanvases);
+    }
+
+    function resizeCanvases() {
+      const rect = document.getElementById("chart-viewport").getBoundingClientRect();
+      const w = Math.floor(rect.width - 16);
+      cCanvas.width = w;
+      mCanvas.width = w;
+      requestRender();
+    }
+
+    function getActiveBars() {
+      if (!currentStock || !currentStock.timeframes) return [];
+      return currentStock.timeframes[currentTF] || [];
+    }
+
+    function requestRender() {
+      const bars = getActiveBars();
+      renderCandleChart(bars);
+      renderMACDChart(bars);
+    }
+
+    // 核心繪製：K 棒 + EMA + 十字線 + 時間與價格軸
+    function renderCandleChart(bars) {
+      const w = cCanvas.width;
+      const h = cCanvas.height;
+      cCtx.clearRect(0, 0, w, h);
+
+      if (bars.length === 0) return;
+
+      const rightPadding = 65;
+      const bottomPadding = 24;
+      const chartW = w - rightPadding;
+      const chartH = h - bottomPadding;
+
+      const totalItemW = barWidth + barSpacing;
+      // 預設將最新的一根置於最右側
+      const maxOffset = Math.max(0, bars.length * totalItemW - chartW);
+      if (offsetX < 0) offsetX = 0;
+      if (offsetX > maxOffset + chartW * 0.5) offsetX = maxOffset + chartW * 0.5;
+
+      // 計算畫面中可見的 K 棒區間
+      const startIdx = Math.max(0, Math.floor(offsetX / totalItemW));
+      const endIdx = Math.min(bars.length, Math.ceil((offsetX + chartW) / totalItemW) + 1);
+
+      const visibleBars = bars.slice(startIdx, endIdx);
+      if (visibleBars.length === 0) return;
+
+      // 計算可見範圍最高與最低價
+      let minP = Math.min(...visibleBars.map(b => b.low));
+      let maxP = Math.max(...visibleBars.map(b => b.high));
+      visibleBars.forEach(b => {
+        if (b.ema20) { minP = Math.min(minP, b.ema20); maxP = Math.max(maxP, b.ema20); }
+        if (b.ema60) { minP = Math.min(minP, b.ema60); maxP = Math.max(maxP, b.ema60); }
+        if (b.ema100) { minP = Math.min(minP, b.ema100); maxP = Math.max(maxP, b.ema100); }
+      });
+      const pPadding = (maxP - minP) * 0.08 || 1;
+      minP -= pPadding;
+      maxP += pPadding;
+
+      function getY(p) {
+        return chartH - ((p - minP) / (maxP - minP)) * chartH;
+      }
+
+      // 繪製格線與右側價格刻度
+      cCtx.strokeStyle = "rgba(30, 41, 59, 0.4)";
+      cCtx.lineWidth = 1;
+      cCtx.fillStyle = "#64748b";
+      cCtx.font = "10px monospace";
+      cCtx.textAlign = "left";
+
+      for (let i = 0; i <= 5; i++) {
+        const y = chartH * (i / 5);
+        const p = maxP - (i / 5) * (maxP - minP);
+        cCtx.beginPath();
+        cCtx.moveTo(0, y);
+        cCtx.lineTo(chartW, y);
+        cCtx.stroke();
+        cCtx.fillText(`NT$ ${p.toFixed(1)}`, chartW + 6, y + 3);
+      }
+
+      // 繪製 EMA 均線 (20, 60, 100)
+      function drawEMA(key, color) {
+        cCtx.strokeStyle = color;
+        cCtx.lineWidth = 1.5;
+        cCtx.beginPath();
+        let started = false;
+        for (let i = startIdx; i < endIdx; i++) {
+          const val = bars[i][key];
+          if (!val) continue;
+          const x = i * totalItemW - offsetX + barWidth / 2;
+          const y = getY(val);
+          if (!started) { cCtx.moveTo(x, y); started = true; }
+          else { cCtx.lineTo(x, y); }
+        }
+        cCtx.stroke();
+      }
+      drawEMA("ema20", "#f59e0b");
+      drawEMA("ema60", "#818cf8");
+      drawEMA("ema100", "#f43f5e");
+
+      // 繪製 K 棒與底部時間軸
+      cCtx.textAlign = "center";
+      let lastDrawnTimeX = -100;
+
+      for (let i = startIdx; i < endIdx; i++) {
+        const b = bars[i];
+        const x = i * totalItemW - offsetX;
+        const cx = x + barWidth / 2;
+
+        const isUp = b.close >= b.open;
+        const color = isUp ? "#ef4444" : "#22c55e"; // 台股紅漲綠跌
+
+        // 影線
+        cCtx.strokeStyle = color;
+        cCtx.lineWidth = 1.2;
+        cCtx.beginPath();
+        cCtx.moveTo(cx, getY(b.high));
+        cCtx.lineTo(cx, getY(b.low));
+        cCtx.stroke();
+
+        // 實體蠟燭
+        const oY = getY(b.open);
+        const cY = getY(b.close);
+        const topY = Math.min(oY, cY);
+        const bodyH = Math.max(Math.abs(cY - oY), 1.5);
+        cCtx.fillStyle = color;
+        cCtx.fillRect(x, topY, barWidth, bodyH);
+
+        // 時間座標標籤 (自適應避免重疊)
+        if (cx - lastDrawnTimeX > 75) {
+          cCtx.fillStyle = "#64748b";
+          cCtx.fillText(b.time, cx, h - 6);
+          cCtx.strokeStyle = "rgba(30, 41, 59, 0.3)";
+          cCtx.beginPath();
+          cCtx.moveTo(cx, 0);
+          cCtx.lineTo(cx, chartH);
+          cCtx.stroke();
+          lastDrawnTimeX = cx;
+        }
+      }
+
+      // 十字光標與 Hover 資訊
+      if (mousePos.inChart && mousePos.x >= 0 && mousePos.x <= chartW) {
+        cCtx.strokeStyle = "rgba(148, 163, 184, 0.5)";
+        cCtx.setLineDash([4, 4]);
+        cCtx.beginPath();
+        cCtx.moveTo(mousePos.x, 0);
+        cCtx.lineTo(mousePos.x, chartH);
+        cCtx.moveTo(0, mousePos.y);
+        cCtx.lineTo(chartW, mousePos.y);
+        cCtx.stroke();
+        cCtx.setLineDash([]);
+
+        // 計算游標所在的 K 棒
+        const hoverIdx = Math.floor((mousePos.x + offsetX) / totalItemW);
+        if (hoverIdx >= 0 && hoverIdx < bars.length) {
+          const hb = bars[hoverIdx];
+          document.getElementById("cursor-info").innerText = 
+            `[${hb.time}] 開:${hb.open} 高:${hb.high} 低:${hb.low} 收:${hb.close}`;
+        }
+      } else {
+        document.getElementById("cursor-info").innerText = "";
+      }
+    }
+
+    // 副圖繪製：MACD 能量柱 + 快慢線 (與主圖絕對同步)
+    function renderMACDChart(bars) {
+      const w = mCanvas.width;
+      const h = mCanvas.height;
+      mCtx.clearRect(0, 0, w, h);
+
+      if (bars.length === 0) return;
+
+      const rightPadding = 65;
+      const chartW = w - rightPadding;
+      const chartH = h;
+      const totalItemW = barWidth + barSpacing;
+
+      const startIdx = Math.max(0, Math.floor(offsetX / totalItemW));
+      const endIdx = Math.min(bars.length, Math.ceil((offsetX + chartW) / totalItemW) + 1);
+      const visibleBars = bars.slice(startIdx, endIdx);
+      if (visibleBars.length === 0) return;
+
+      let maxAbs = Math.max(
+        ...visibleBars.map(b => Math.max(Math.abs(b.dif || 0), Math.abs(b.dea || 0), Math.abs(b.hist || 0)))
+      ) || 1;
+      maxAbs *= 1.15;
+
+      const zeroY = chartH / 2;
+      function getMY(val) {
+        return zeroY - (val / maxAbs) * (chartH / 2);
+      }
+
+      // 零軸
+      mCtx.strokeStyle = "rgba(71, 85, 105, 0.4)";
+      mCtx.lineWidth = 1;
+      mCtx.beginPath();
+      mCtx.moveTo(0, zeroY);
+      mCtx.lineTo(chartW, zeroY);
+      mCtx.stroke();
+
+      // 右側數值刻度
+      mCtx.fillStyle = "#64748b";
+      mCtx.font = "9px monospace";
+      mCtx.textAlign = "left";
+      mCtx.fillText(maxAbs.toFixed(1), chartW + 6, 12);
+      mCtx.fillText("0.0", chartW + 6, zeroY + 3);
+      mCtx.fillText((-maxAbs).toFixed(1), chartW + 6, chartH - 4);
+
+      // MACD 能量柱
+      for (let i = startIdx; i < endIdx; i++) {
+        const b = bars[i];
+        const x = i * totalItemW - offsetX;
+        const val = b.hist || 0;
+        const y = getMY(val);
+        mCtx.fillStyle = val >= 0 ? "rgba(239, 68, 68, 0.75)" : "rgba(34, 197, 94, 0.75)";
+        mCtx.fillRect(x, Math.min(zeroY, y), barWidth, Math.abs(y - zeroY));
+      }
+
+      // DIF 線 (青色) 與 DEA 線 (橘色)
+      function drawMACDLine(key, color) {
+        mCtx.strokeStyle = color;
+        mCtx.lineWidth = 1.3;
+        mCtx.beginPath();
+        let started = false;
+        for (let i = startIdx; i < endIdx; i++) {
+          const val = bars[i][key];
+          if (typeof val === "undefined") continue;
+          const x = i * totalItemW - offsetX + barWidth / 2;
+          const y = getMY(val);
+          if (!started) { mCtx.moveTo(x, y); started = true; }
+          else { mCtx.lineTo(x, y); }
+        }
+        mCtx.stroke();
+      }
+      drawMACDLine("dif", "#06b6d4");
+      drawMACDLine("dea", "#f59e0b");
     }
 
     async function loadSMCData() {
@@ -300,10 +510,15 @@
         <p>• <b>防守止損 (SL)</b>：<b>NT$ ${stock.sl}</b>，預期大波段風盈比達 <b class="text-emerald-400">1 : ${stock.rr || '2.0'}</b>。</p>
       `;
 
-      drawActiveTimeframe();
+      // 重置偏移量，自動對齊至最新資料
+      const bars = getActiveBars();
+      const chartW = cCanvas.width - 65;
+      offsetX = Math.max(0, bars.length * (barWidth + barSpacing) - chartW);
+
+      requestRender();
     }
 
-    function changeTimeframe(tf) {
+    function changeTF(tf) {
       currentTF = tf;
       document.querySelectorAll('#tf-selector .tf-btn').forEach(btn => {
         if (btn.getAttribute('data-tf') === tf) {
@@ -312,44 +527,18 @@
           btn.classList.remove('active');
         }
       });
-      drawActiveTimeframe();
-    }
 
-    function drawActiveTimeframe() {
-      if (!currentStock || !currentStock.timeframes) return;
+      const bars = getActiveBars();
+      const chartW = cCanvas.width - 65;
+      offsetX = Math.max(0, bars.length * (barWidth + barSpacing) - chartW);
 
-      const candles = currentStock.timeframes[currentTF] || [];
-      if (candles.length === 0) return;
-
-      // 1. 設定 K 棒
-      candleSeries.setData(candles.map(c => ({
-        time: c.time,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close
-      })));
-
-      // 2. 設定均線
-      ema20Series.setData(candles.map(c => ({ time: c.time, value: c.ema20 })));
-      ema60Series.setData(candles.map(c => ({ time: c.time, value: c.ema60 })));
-      ema100Series.setData(candles.map(c => ({ time: c.time, value: c.ema100 })));
-
-      // 3. 設定 MACD
-      histSeries.setData(candles.map(c => ({
-        time: c.time,
-        value: c.hist,
-        color: c.hist >= 0 ? '#ef4444' : '#22c55e'
-      })));
-      difSeries.setData(candles.map(c => ({ time: c.time, value: c.dif })));
-      deaSeries.setData(candles.map(c => ({ time: c.time, value: c.dea })));
-
-      candleChart.timeScale().fitContent();
+      requestRender();
     }
 
     window.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
-      initTradingViewCharts();
+      setupInteractions();
+      resizeCanvases();
       loadSMCData();
     });
   </script>
