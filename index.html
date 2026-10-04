@@ -3,22 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台股全時框 SMC × 專業 K 棒 / 線圖切換終端</title>
+  <title>台股全時框 SMC × TradingView 原生量化終端</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- TradingView 官方原生圖表腳本庫 -->
+  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <style>
     body { background-color: #080c14; color: #cbd5e1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: #0b1120; }
     ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
     .bg-panel { background: rgba(13, 20, 36, 0.85); backdrop-filter: blur(8px); border: 1px solid #1e293b; }
-    .tf-btn { transition: all 0.15s ease; cursor: pointer; }
-    .tf-btn.active { background-color: #06b6d4 !important; color: #080c14 !important; font-weight: bold; }
-    .type-btn.active { background-color: #3b82f6 !important; color: #ffffff !important; font-weight: bold; }
+    .stock-row.selected { background-color: rgba(6, 182, 212, 0.15) !important; border-left: 3px solid #06b6d4; }
   </style>
 </head>
-<body class="min-h-screen flex flex-col p-4 md:p-6 space-y-5">
+<body class="min-h-screen flex flex-col p-4 md:p-6 space-y-4">
 
   <header class="bg-panel rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 border border-slate-800">
     <div class="flex items-center space-x-3">
@@ -27,21 +26,21 @@
       </div>
       <div>
         <h1 class="text-base font-bold text-slate-100 flex items-center gap-2">
-          台股全週期 SMC × 專業 K 棒 / 線圖切換量化終端
-          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">1m·5m·15m·1H 當天盤中 · 日·周·月</span>
+          台股全週期 SMC × TradingView 原生量化終端
+          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">TradingView 核心驅動 · 自由滾動拖曳</span>
         </h1>
-        <p class="text-xs text-slate-400">分時走勢鎖定當日盤中真實數據 · 支援 K 棒 / 線形圖雙模切換 · EMA 20/60/100 · MACD (12,26,9)</p>
+        <p class="text-xs text-slate-400">1m · 5m · 15m · 1H · 日線 · 周線 · 月線 全週期自由縮放 · 內建 MACD (12,26,9) 與 EMA</p>
       </div>
     </div>
     <button onclick="loadSMCData()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-900 font-semibold text-xs flex items-center gap-1.5 transition">
-      <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-icon"></i> 重新載入最新數據
+      <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-icon"></i> 重新載入量化數據
     </button>
   </header>
 
-  <main class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+  <main class="grid grid-cols-1 xl:grid-cols-12 gap-5 flex-1">
     
-    <!-- 左側表格 -->
-    <section class="xl:col-span-6 space-y-4">
+    <!-- 左側表格 (5 欄寬度) -->
+    <section class="xl:col-span-5 space-y-4">
       <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden">
         <div class="p-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-900/60">
           <div class="text-xs font-semibold text-slate-300 flex items-center gap-2">
@@ -51,159 +50,102 @@
           <div class="text-[11px] text-slate-400 font-mono" id="result-count">共 0 檔</div>
         </div>
 
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto max-h-[720px]">
           <table class="w-full text-left text-xs">
-            <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800 font-mono">
+            <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800 font-mono sticky top-0 z-10">
               <tr>
                 <th class="py-2.5 px-3">代號 / 標的</th>
                 <th class="py-2.5 px-2 text-center text-amber-300">重合條件</th>
                 <th class="py-2.5 px-2">現價</th>
                 <th class="py-2.5 px-2 text-indigo-300">月線 1:1 止盈</th>
-                <th class="py-2.5 px-2">建議進場點</th>
-                <th class="py-2.5 px-2 text-center text-emerald-400">歷史勝率 (1Y)</th>
+                <th class="py-2.5 px-2 text-center text-emerald-400">歷史勝率</th>
                 <th class="py-2.5 px-2 text-right">風盈比</th>
               </tr>
             </thead>
             <tbody id="stock-table-body" class="divide-y divide-slate-800/60 font-mono">
               <tr>
-                <td colspan="7" class="py-12 text-center text-slate-400 text-xs">正在載入數據...</td>
+                <td colspan="6" class="py-12 text-center text-slate-400 text-xs">正在載入數據...</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
-    </section>
 
-    <!-- 右側圖表區 -->
-    <section class="xl:col-span-6 space-y-4">
-      <div class="bg-panel rounded-xl p-4 border border-slate-800 space-y-3">
-        
-        <!-- 頂部切換選單 -->
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-          <div>
-            <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
-              <span class="text-cyan-400 font-mono" id="chart-symbol">--</span>
-              <span class="text-xs font-normal px-2 py-0.5 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-500/30" id="chart-pattern-badge">--</span>
-            </h3>
-            <div class="flex items-center gap-2 mt-1 text-[11px] font-mono">
-              <span class="text-amber-400">● EMA20</span>
-              <span class="text-indigo-400">● EMA60</span>
-              <span class="text-rose-400">● EMA100</span>
-              <span id="intraday-hint" class="text-emerald-400 ml-1"></span>
-            </div>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-2">
-            <!-- K 棒 / 線圖 切換按鈕 -->
-            <div class="flex items-center bg-slate-900 p-0.5 rounded-lg border border-slate-800 font-mono text-xs">
-              <button onclick="toggleChartType('candle')" id="btn-candle" class="type-btn active px-2 py-1 rounded text-slate-300 flex items-center gap-1">
-                <i data-lucide="candlestick-chart" class="w-3.5 h-3.5"></i> K棒
-              </button>
-              <button onclick="toggleChartType('line')" id="btn-line" class="type-btn px-2 py-1 rounded text-slate-400 flex items-center gap-1">
-                <i data-lucide="line-chart" class="w-3.5 h-3.5"></i> 線圖
-              </button>
-            </div>
-
-            <!-- 7 個週期切換按鈕 -->
-            <div class="flex items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800 font-mono text-xs" id="tf-selector">
-              <button onclick="switchTF('1m')" class="tf-btn px-1.5 py-1 rounded text-slate-400 hover:text-white" data-tf="1m">1m</button>
-              <button onclick="switchTF('5m')" class="tf-btn px-1.5 py-1 rounded text-slate-400 hover:text-white" data-tf="5m">5m</button>
-              <button onclick="switchTF('15m')" class="tf-btn px-1.5 py-1 rounded text-slate-400 hover:text-white" data-tf="15m">15m</button>
-              <button onclick="switchTF('1h')" class="tf-btn px-1.5 py-1 rounded text-slate-400 hover:text-white" data-tf="1h">1H</button>
-              <button onclick="switchTF('1d')" class="tf-btn active px-1.5 py-1 rounded text-slate-400 hover:text-white" data-tf="1d">日線</button>
-              <button onclick="switchTF('1w')" class="tf-btn px-1.5 py-1 rounded text-slate-400 hover:text-white" data-tf="1w">周線</button>
-              <button onclick="switchTF('1M')" class="tf-btn px-1.5 py-1 rounded text-slate-400 hover:text-white" data-tf="1M">月線</button>
-            </div>
-          </div>
+      <!-- 交易規劃卡片 -->
+      <div class="p-4 bg-panel rounded-xl border border-slate-800 space-y-2 text-xs">
+        <div class="text-slate-200 font-semibold flex items-center justify-between">
+          <span class="flex items-center gap-1.5"><i data-lucide="compass" class="w-3.5 h-3.5 text-cyan-400"></i> 三階交易執行規劃</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" id="backtest-tag">勝率: --</span>
         </div>
-
-        <!-- 主圖：K 棒 / 折線 Canvas -->
-        <div style="position: relative; height: 240px; width: 100%;">
-          <canvas id="mainCanvas"></canvas>
-        </div>
-
-        <!-- 副圖：MACD Canvas -->
-        <div class="border-t border-slate-800/80 pt-2 space-y-1">
-          <div class="flex items-center justify-between text-[11px] font-mono text-slate-400">
-            <span>MACD (12, 26, 9)</span>
-            <div class="flex items-center gap-2">
-              <span class="text-cyan-400">● DIF</span>
-              <span class="text-amber-400">● DEA</span>
-              <span class="text-emerald-400">■ 能量柱</span>
-            </div>
-          </div>
-          <div style="position: relative; height: 110px; width: 100%;">
-            <canvas id="macdCanvas"></canvas>
-          </div>
-        </div>
-
-        <!-- 交易規劃卡片 -->
-        <div class="p-3.5 bg-slate-900/70 rounded-lg border border-slate-800 space-y-2 text-xs">
-          <div class="text-slate-200 font-semibold flex items-center justify-between">
-            <span class="flex items-center gap-1.5"><i data-lucide="compass" class="w-3.5 h-3.5 text-cyan-400"></i> 三階交易執行規劃</span>
-            <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" id="backtest-tag">勝率: --</span>
-          </div>
-          <div class="text-slate-400 space-y-1.5 font-sans leading-relaxed" id="plan-details">
-            <p>• 點選上方按鈕切換 K 棒 / 線圖，1m~1H 為當天盤中分時走勢。</p>
-          </div>
+        <div class="text-slate-400 space-y-1.5 font-sans leading-relaxed" id="plan-details">
+          <p>• 點選上方表格中任一股票，右側圖表將即刻切換為該股專屬 TradingView 視窗。</p>
         </div>
       </div>
     </section>
+
+    <!-- 右側圖表區：純粹 TradingView 原生高流暢互動視窗 (7 欄寬度) -->
+    <section class="xl:col-span-7 flex flex-col space-y-2">
+      <div class="bg-panel rounded-xl p-3 border border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-base font-bold text-cyan-400 font-mono" id="chart-symbol">--</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-500/30" id="chart-pattern-badge">--</span>
+        </div>
+        <div class="text-xs text-slate-400 flex items-center gap-2">
+          <span>💡 支援滾輪自由縮放、按住平移、左上角自由切換分時/日線/周線/月線</span>
+        </div>
+      </div>
+
+      <!-- TradingView 容器 -->
+      <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden flex-1 min-h-[660px]" id="tv-chart-container">
+        <!-- TradingView Widget 會動態渲染在這裡 -->
+      </div>
+    </section>
+
   </main>
 
   <script>
     let currentStock = null;
-    let currentTF = '1d';
-    let chartMode = 'candle';
     let analyzedResults = [];
-    let mainChart = null;
-    let macdChart = null;
+    let tvWidget = null;
 
-    // 自訂 Chart.js Candlestick 繪製外掛
-    const candlestickPlugin = {
-      id: 'candlestickRenderer',
-      afterDatasetsDraw(chart) {
-        if (chartMode !== 'candle') return;
-        const meta = chart.getDatasetMeta(0);
-        if (!meta || !meta.data || !chart.data.candles) return;
+    // 上櫃標的列表（TradingView 上櫃股票代碼為 TPEX，上市為 TWSE）
+    const TPEX_CODES = ["3324", "8069", "3131", "3583", "6442", "4583", "8996", "6274"];
 
-        const ctx = chart.ctx;
-        const candles = chart.data.candles;
-        const yScale = chart.scales.y;
-
-        ctx.save();
-        meta.data.forEach((element, i) => {
-          const c = candles[i];
-          if (!c) return;
-
-          const x = element.x;
-          const openY = yScale.getPixelForValue(c.open);
-          const closeY = yScale.getPixelForValue(c.close);
-          const highY = yScale.getPixelForValue(c.high);
-          const lowY = yScale.getPixelForValue(c.low);
-
-          const isUp = c.close >= c.open;
-          const color = isUp ? '#ef4444' : '#22c55e'; // 台股：紅漲綠跌
-
-          // 1. 上下影線
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.moveTo(x, highY);
-          ctx.lineTo(x, lowY);
-          ctx.stroke();
-
-          // 2. 實體蠟燭棒
-          const candleWidth = Math.max(Math.min((chart.width / candles.length) * 0.6, 12), 4);
-          ctx.fillStyle = color;
-          const topY = Math.min(openY, closeY);
-          const bodyHeight = Math.max(Math.abs(closeY - openY), 2);
-          ctx.fillRect(x - candleWidth / 2, topY, candleWidth, bodyHeight);
-        });
-        ctx.restore();
+    function getTradingViewSymbol(code) {
+      if (TPEX_CODES.includes(String(code))) {
+        return `TPEX:${code}`;
       }
-    };
-    Chart.register(candlestickPlugin);
+      return `TWSE:${code}`;
+    }
+
+    function initTradingViewWidget(symbolCode) {
+      const container = document.getElementById("tv-chart-container");
+      container.innerHTML = ""; // 清空容器
+
+      const tvSymbol = getTradingViewSymbol(symbolCode);
+
+      new TradingView.widget({
+        "autosize": true,
+        "symbol": tvSymbol,
+        "interval": "D",
+        "timezone": "Asia/Taipei",
+        "theme": "dark",
+        "style": "1", // 1 = 經典陰陽蠟燭 K 棒
+        "locale": "zh_TW",
+        "toolbar_bg": "#0a0f1d",
+        "enable_publishing": false,
+        "allow_symbol_change": true,
+        "container_id": "tv-chart-container",
+        "studies": [
+          "MACD@tv-basicstudies",
+          "EMA@tv-basicstudies",
+          "MASimple@tv-basicstudies"
+        ],
+        "hide_side_toolbar": false, // 開啟左側專業畫線工具（費氏回撤、趨勢線等）
+        "withdateranges": true,
+        "save_image": false
+      });
+    }
 
     async function loadSMCData() {
       const icon = document.getElementById("refresh-icon");
@@ -226,7 +168,7 @@
         console.error(err);
         document.getElementById("scan-status").innerText = "讀取失敗";
         document.getElementById("stock-table-body").innerHTML = `
-          <tr><td colspan="7" class="py-8 text-center text-rose-400">⚠ ${err.message}</td></tr>
+          <tr><td colspan="6" class="py-8 text-center text-rose-400">⚠ ${err.message}</td></tr>
         `;
       } finally {
         if (icon) icon.classList.remove("animate-spin");
@@ -238,9 +180,10 @@
       tbody.innerHTML = "";
       document.getElementById("result-count").innerText = `共 ${analyzedResults.length} 檔`;
 
-      analyzedResults.forEach((stock) => {
+      analyzedResults.forEach((stock, idx) => {
         const tr = document.createElement("tr");
-        tr.className = "cursor-pointer transition hover:bg-slate-800/60";
+        tr.className = `cursor-pointer transition hover:bg-slate-800/60 stock-row ${idx === 0 ? 'selected' : ''}`;
+        tr.setAttribute("id", `row-${stock.code}`);
         tr.onclick = () => selectStock(stock);
 
         const score = stock.confluenceScore || 0;
@@ -259,7 +202,6 @@
           <td class="py-2.5 px-2 text-center">${scoreBadge}</td>
           <td class="py-2.5 px-2 font-semibold text-slate-200">NT$ ${stock.price}</td>
           <td class="py-2.5 px-2 font-bold text-indigo-300">${monthlyTP}</td>
-          <td class="py-2.5 px-2 text-cyan-400 font-medium">NT$ ${stock.entryZone || stock.price}</td>
           <td class="py-2.5 px-2 text-center">
             <span class="px-2 py-0.5 rounded text-[11px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30">
               ${stock.winRate || '56.5%'}
@@ -274,8 +216,14 @@
 
     function selectStock(stock) {
       currentStock = stock;
+
+      // 更新選中高亮
+      document.querySelectorAll('.stock-row').forEach(r => r.classList.remove('selected'));
+      const activeRow = document.getElementById(`row-${stock.code}`);
+      if (activeRow) activeRow.classList.add('selected');
+
       document.getElementById("chart-symbol").innerText = `${stock.code} ${stock.name}`;
-      document.getElementById("chart-pattern-badge").innerText = stock.dailyPattern || "整理結構";
+      document.getElementById("chart-pattern-badge").innerText = stock.dailyPattern || "突破蓄勢";
       document.getElementById("backtest-tag").innerText = `歷史勝率: ${stock.winRate || '56.5%'} (PF: ${stock.profitFactor || '1.92'})`;
 
       document.getElementById("plan-details").innerHTML = `
@@ -284,214 +232,8 @@
         <p>• <b>防守止損 (SL)</b>：<b>NT$ ${stock.sl}</b>，預期大波段風盈比達 <b class="text-emerald-400">1 : ${stock.rr || '2.0'}</b>。</p>
       `;
 
-      drawCharts();
-    }
-
-    function toggleChartType(mode) {
-      chartMode = mode;
-      document.getElementById('btn-candle').classList.toggle('active', mode === 'candle');
-      document.getElementById('btn-line').classList.toggle('active', mode === 'line');
-      drawCharts();
-    }
-
-    function switchTF(tf) {
-      currentTF = tf;
-      document.querySelectorAll('#tf-selector .tf-btn').forEach(btn => {
-        if (btn.getAttribute('data-tf') === tf) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
-      });
-      drawCharts();
-    }
-
-    function drawCharts() {
-      if (!currentStock || !currentStock.timeframes) return;
-
-      const bars = currentStock.timeframes[currentTF] || [];
-      if (bars.length === 0) return;
-
-      const hintEl = document.getElementById("intraday-hint");
-      if (['1m', '5m', '15m', '1h'].includes(currentTF)) {
-        hintEl.innerText = "⚡ 當日盤中微觀結構 (Intraday)";
-      } else {
-        hintEl.innerText = "";
-      }
-
-      const labels = bars.map(b => b.time);
-      const closes = bars.map(b => b.close);
-      const ema20s = bars.map(b => b.ema20);
-      const ema60s = bars.map(b => b.ema60);
-      const ema100s = bars.map(b => b.ema100);
-      const difs = bars.map(b => b.dif);
-      const deas = bars.map(b => b.dea);
-      const hists = bars.map(b => b.hist);
-
-      const candles = bars.map(b => ({
-        open: b.open,
-        high: b.high,
-        low: b.low,
-        close: b.close
-      }));
-
-      // 1. 繪製主圖 (K 棒 / 折線)
-      const ctxMain = document.getElementById("mainCanvas");
-      if (mainChart) {
-        mainChart.destroy();
-        mainChart = null;
-      }
-
-      const datasets = [];
-      if (chartMode === 'line') {
-        datasets.push({
-          label: '走勢/收盤',
-          data: closes,
-          borderColor: '#06b6d4',
-          backgroundColor: 'rgba(6, 182, 212, 0.08)',
-          borderWidth: 2,
-          pointRadius: 2,
-          tension: 0.15,
-          fill: true
-        });
-      } else {
-        datasets.push({
-          label: 'K棒收盤',
-          data: closes,
-          borderColor: 'transparent',
-          backgroundColor: 'transparent',
-          pointRadius: 0,
-          borderWidth: 0,
-          fill: false
-        });
-      }
-
-      datasets.push(
-        { label: 'EMA 20', data: ema20s, borderColor: '#f59e0b', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
-        { label: 'EMA 60', data: ema60s, borderColor: '#818cf8', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
-        { label: 'EMA 100', data: ema100s, borderColor: '#f43f5e', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
-      );
-
-      const allHighs = candles.map(c => c.high);
-      const allLows = candles.map(c => c.low);
-      const minY = Math.min(...allLows) * 0.995;
-      const maxY = Math.max(...allHighs) * 1.005;
-
-      mainChart = new Chart(ctxMain, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: datasets,
-          candles: candles
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: (ctx) => {
-                  const idx = ctx.dataIndex;
-                  const c = candles[idx];
-                  if (chartMode === 'candle' && c) {
-                    return `開: ${c.open} 高: ${c.high} 低: ${c.low} 收: ${c.close}`;
-                  }
-                  return `${ctx.dataset.label}: NT$ ${ctx.parsed.y}`;
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              grid: { color: 'rgba(51, 65, 85, 0.2)' },
-              ticks: { color: '#64748b', font: { family: 'monospace', size: 10 } }
-            },
-            y: {
-              min: Number(minY.toFixed(1)),
-              max: Number(maxY.toFixed(1)),
-              grid: { color: 'rgba(51, 65, 85, 0.2)' },
-              ticks: {
-                color: '#64748b',
-                font: { family: 'monospace', size: 10 },
-                callback: (v) => `NT$ ${v}`
-              }
-            }
-          }
-        }
-      });
-
-      // 2. 繪製副圖 (MACD)
-      const ctxMACD = document.getElementById("macdCanvas");
-      if (macdChart) {
-        macdChart.destroy();
-        macdChart = null;
-      }
-
-      const barColors = hists.map(v => v >= 0 ? 'rgba(34, 197, 94, 0.85)' : 'rgba(239, 68, 68, 0.85)');
-
-      macdChart = new Chart(ctxMACD, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              type: 'bar',
-              label: 'MACD 能量柱',
-              data: hists,
-              backgroundColor: barColors,
-              borderWidth: 0,
-              barPercentage: 0.6
-            },
-            {
-              type: 'line',
-              label: 'DIF (12, 26)',
-              data: difs,
-              borderColor: '#06b6d4',
-              borderWidth: 1.5,
-              pointRadius: 0,
-              tension: 0.2
-            },
-            {
-              type: 'line',
-              label: 'DEA (9)',
-              data: deas,
-              borderColor: '#f59e0b',
-              borderWidth: 1.5,
-              pointRadius: 0,
-              tension: 0.2
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: (c) => `${c.dataset.label}: ${c.parsed.y}`
-              }
-            }
-          },
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: { display: false }
-            },
-            y: {
-              grid: { color: 'rgba(51, 65, 85, 0.15)' },
-              ticks: {
-                color: '#64748b',
-                font: { family: 'monospace', size: 9 }
-              }
-            }
-          }
-        }
-      });
-      lucide.createIcons();
+      // 載入 TradingView 官方即時圖表
+      initTradingViewWidget(stock.code);
     }
 
     window.addEventListener('DOMContentLoaded', () => {
