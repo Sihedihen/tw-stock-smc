@@ -2,8 +2,8 @@ name: 每日台股 SMC 數據自動更新
 
 on:
   schedule:
-    - cron: '30 8 * * 1-5'  # 台灣時間週一至週五 16:30 自動執行
-  workflow_dispatch:        # 支援手動一鍵點擊執行
+    - cron: '30 8 * * 1-5'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,26 +12,25 @@ jobs:
   update-smc:
     runs-on: ubuntu-latest
     steps:
-      - name: 檢出儲存庫代碼
+      - name: 檢出代碼
         uses: actions/checkout@v4
 
-      - name: 設定 Python 3.10
+      - name: 設定 Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: 安裝所需套件
+      - name: 安裝套件
         run: |
-          python -m pip install --upgrade pip
           pip install yfinance pandas numpy
 
-      - name: 執行量化分析與回測
+      - name: 執行量化與全週期抓取
         run: python update_smc.py
 
-      - name: 提交並推送最新數據
+      - name: 推送數據
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add data.json
-          git commit -m "自動更新盤後量化數據 [skip ci]" || echo "無變更"
+          git commit -m "更新全週期K棒數據 [skip ci]" || echo "無變更"
           git push
