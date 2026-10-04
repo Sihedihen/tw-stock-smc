@@ -4,14 +4,14 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
-# 擴充台股熱門題材、中小型強勢股與形態代表標的池 (共 22 檔)
+# 監控池：包含雙鴻、偉詮電、台積電等 22 檔活躍波段題材股
 WATCHLIST = [
+    {"code": "3324", "name": "雙鴻"},
     {"code": "2436", "name": "偉詮電"},
     {"code": "2330", "name": "台積電"},
+    {"code": "3017", "name": "奇鋐"},
     {"code": "2454", "name": "聯發科"},
     {"code": "2363", "name": "矽統"},
-    {"code": "3017", "name": "奇鋐"},
-    {"code": "3324", "name": "雙鴻"},
     {"code": "8996", "name": "高力"},
     {"code": "6442", "name": "光聖"},
     {"code": "3450", "name": "聯鈞"},
@@ -46,231 +46,231 @@ def calculate_macd(series, fast=12, slow=26, signal=9):
     return dif, dea, hist
 
 
-def detect_chart_pattern(highs, lows, closes):
+def detect_daily_pattern(highs, lows, closes):
+    """日線 LTF 內部結構反轉 (MSS / CHoCH) 與形態學"""
     if len(closes) < 20:
-        return {"name": "高位整理", "desc": "歷史K線不足", "is_bullish": False}
+        return {
+            "name": "內部震盪",
+            "desc": "數據不足",
+            "is_bullish": False,
+        }
     h = highs[-20:]
     l = lows[-20:]
     c = closes[-20:]
 
-    # 上升三角
     h_max1, h_max2 = max(h[:10]), max(h[10:])
     l_min1, l_min2 = min(l[:10]), min(l[10:])
+
+    # 1. 上升三角 / 壓力突破
     if (
-        abs(h_max1 - h_max2) / (h_max1 or 1) < 0.03
-        and l_min2 > l_min1 * 1.015
-        and c[-1] >= h_max2 * 0.96
+        abs(h_max1 - h_max2) / (h_max1 or 1) < 0.04
+        and l_min2 > l_min1 * 1.01
+        and c[-1] >= h_max2 * 0.95
     ):
         return {
-            "name": "上升三角 (Ascending Triangle)",
-            "desc": f"壓制頸線約 {clean_num(h_max2)}，低點持續抬高，蓄勢向上突破",
+            "name": "日線上升三角 (蓄勢突破)",
+            "desc": f"壓制頸線約 {clean_num(h_max2)}，低點持續抬高",
             "is_bullish": True,
         }
 
-    # 雙底 W 底
+    # 2. 雙底破底翻 (Liquidity Sweep W Bottom)
     if (
-        abs(l_min1 - l_min2) / (l_min1 or 1) < 0.035
-        and c[-1] > min(l_min1, l_min2) * 1.03
+        abs(l_min1 - l_min2) / (l_min1 or 1) < 0.045
+        and c[-1] > min(l_min1, l_min2) * 1.025
     ):
         return {
-            "name": "雙底結構 (Double Bottom)",
-            "desc": f"雙重支撐 {clean_num(min(l_min1, l_min2))} 回測確認不破",
+            "name": "日線雙底破底翻 (W底)",
+            "desc": f"測試支撐 {clean_num(min(l_min1, l_min2))} 獵取流動性後反彈",
+            "is_bullish": True,
+        }
+
+    # 3. 日線內部結構破位 (MSS / CHoCH)
+    if c[-1] > max(h[-10:-1]):
+        return {
+            "name": "日線看漲 MSS 突破",
+            "desc": "收盤突破近 10 日結構前高，小級別反轉確立",
             "is_bullish": True,
         }
 
     return {
-        "name": "多頭箱體整理",
-        "desc": f"區間 {clean_num(min(l))} ~ {clean_num(max(h))} 縮量整理",
+        "name": "日線箱體換手",
+        "desc": f"區間 {clean_num(min(l))} ~ {clean_num(max(h))} 蓄勢整理",
         "is_bullish": False,
     }
 
 
-def backtest_strategy_win_rate(df, holding_limit=20):
-    if len(df) < 80:
-        return "50.0%", "1.50"
-
-    highs = df["High"].values
-    lows = df["Low"].values
-    closes = df["Close"].values
-    ema20 = df["EMA20"].values
-    ema60 = df["EMA60"].values
-
-    wins = 0
-    losses = 0
-    total_trades = 0
-    gross_win = 0.0
-    gross_loss = 0.0
-
-    for i in range(40, len(df) - holding_limit, 3):
-        c_price = closes[i]
-        if (
-            c_price >= ema20[i] > ema60[i]
-            and lows[i] > highs[i - 2]
-            and lows[i - 1] > highs[i - 2]
-        ):
-            sl = min(lows[max(0, i - 15) : i]) * 0.985
-            risk = c_price - sl
-            if risk <= 0:
-                continue
-            tp = c_price + 2.0 * risk
-
-            hit_result = "TIMEOUT"
-            for step in range(1, holding_limit + 1):
-                if lows[i + step] <= sl:
-                    hit_result = "LOSS"
-                    break
-                elif highs[i + step] >= tp:
-                    hit_result = "WIN"
-                    break
-
-            total_trades += 1
-            if hit_result == "WIN":
-                wins += 1
-                gross_win += 2.0 * risk
-            elif hit_result == "LOSS":
-                losses += 1
-                gross_loss += risk
-
-    if total_trades == 0:
-        return "52.0%", "1.65"
-
-    win_rate = (wins / total_trades) * 100
-    profit_factor = (gross_win / (gross_loss or 1.0)) if gross_loss > 0 else 2.5
-    return f"{win_rate:.1f}%", f"{profit_factor:.2f}"
-
-
-def analyze_stock(item):
+def analyze_triad_smc(item):
     for ext in [".TW", ".TWO"]:
         try:
             ticker = f"{item['code']}{ext}"
+            # 抓取 3 年歷史日 K，以支持月線與周線的高精度運算
             df = yf.download(
-                ticker, period="1y", interval="1d", progress=False
+                ticker, period="3y", interval="1d", progress=False
             )
-            if df is None or len(df) < 50:
+            if df is None or len(df) < 120:
                 continue
 
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.droplevel(1)
 
             df = df.dropna(subset=["Close"])
-            if len(df) < 50:
+            if len(df) < 120:
                 continue
 
-            # EMA
+            # ----------------- 1. 月線級別 (Macro HTF)：趨勢與 1:1 斐波那契止盈 -----------------
+            df_monthly = (
+                df.resample("ME")
+                .agg(
+                    {
+                        "Open": "first",
+                        "High": "max",
+                        "Low": "min",
+                        "Close": "last",
+                        "Volume": "sum",
+                    }
+                )
+                .dropna()
+            )
+            if len(df_monthly) < 12:
+                continue
+
+            m_highs = [float(x) for x in df_monthly["High"].values]
+            m_lows = [float(x) for x in df_monthly["Low"].values]
+            m_closes = [float(x) for x in df_monthly["Close"].values]
+
+            # 抓取月線主推波段：尋找近 2 年的推升浪 (Wave 1) 與回踩浪 (Wave 2)
+            m_swing_high = max(m_highs[-18:-1]) if len(m_highs) > 18 else max(m_highs)
+            m_origin_low = min(m_lows[-30:]) if len(m_lows) > 30 else min(m_lows)
+            
+            # 回踩低點 (Pullback Low)
+            recent_m_low = min(m_lows[-10:-1]) if len(m_lows) > 10 else min(m_lows[-5:])
+
+            # 計算 1:1 上漲等幅目標 (Fibonacci Extension 1.0)
+            wave1_length = m_swing_high - m_origin_low
+            tp_monthly_1to1 = clean_num(recent_m_low + wave1_length)
+            fib_0618 = clean_num(recent_m_low + wave1_length * 0.618)
+
+            monthly_trend = "月線多頭主升浪" if m_closes[-1] >= recent_m_low else "月線深幅回撤"
+
+            # ----------------- 2. 周線級別 (Intermediate HTF)：SMC 結構與 FVG -----------------
+            df_weekly = (
+                df.resample("W-FRI")
+                .agg(
+                    {
+                        "Open": "first",
+                        "High": "max",
+                        "Low": "min",
+                        "Close": "last",
+                        "Volume": "sum",
+                    }
+                )
+                .dropna()
+            )
+            w_highs = [float(x) for x in df_weekly["High"].values]
+            w_lows = [float(x) for x in df_weekly["Low"].values]
+            w_closes = [float(x) for x in df_weekly["Close"].values]
+
+            # 周線 FVG
+            weekly_fvg = "無缺口"
+            has_weekly_fvg = False
+            for i in range(len(df_weekly) - 1, max(len(df_weekly) - 8, 2), -1):
+                if w_lows[i] > w_highs[i - 2]:
+                    has_weekly_fvg = True
+                    weekly_fvg = f"{clean_num(w_highs[i-2])} ~ {clean_num(w_lows[i])}"
+                    break
+
+            # 周線 MACD
+            w_dif, w_dea, _ = calculate_macd(df_weekly["Close"])
+            w_dif_vals = [float(x) for x in w_dif.values]
+            w_dea_vals = [float(x) for x in w_dea.values]
+            weekly_macd = "周線零軸上多頭" if w_dif_vals[-1] > 0 else "周線低位蓄勢"
+            if len(w_dif_vals) >= 2 and w_dif_vals[-1] > w_dea_vals[-1] and w_dif_vals[-2] <= w_dea_vals[-2]:
+                weekly_macd = "周線金叉突破 (HTF)"
+
+            # ----------------- 3. 日線級別 (Micro LTF)：EMA、內部結構、進場與止損 -----------------
             df["EMA20"] = df["Close"].ewm(span=20, adjust=False).mean()
             df["EMA60"] = df["Close"].ewm(span=60, adjust=False).mean()
             df["EMA100"] = df["Close"].ewm(span=100, adjust=False).mean()
 
-            closes = [float(x) for x in df["Close"].values]
-            highs = [float(x) for x in df["High"].values]
-            lows = [float(x) for x in df["Low"].values]
-            dates = [d.strftime("%m/%d") for d in df.index]
+            d_closes = [float(x) for x in df["Close"].values]
+            d_highs = [float(x) for x in df["High"].values]
+            d_lows = [float(x) for x in df["Low"].values]
+            d_dates = [d.strftime("%m/%d") for d in df.index]
 
-            price_now = clean_num(closes[-1])
+            price_now = clean_num(d_closes[-1])
             ema20_now = clean_num(df["EMA20"].iloc[-1])
             ema60_now = clean_num(df["EMA60"].iloc[-1])
             ema100_now = clean_num(df["EMA100"].iloc[-1])
 
-            # ----------------- 重合條件 (Confluence) 判定 -----------------
-            confluence_score = 0
-            confluence_factors = []
+            # 日線形態
+            pattern_info = detect_daily_pattern(d_highs, d_lows, d_closes)
 
-            # 條件 1: EMA 多頭排列或股價站穩均線
-            is_ema_bullish = False
-            if ema20_now > ema60_now > ema100_now:
-                ema_status = "多頭排列 (Bullish)"
-                is_ema_bullish = True
-                confluence_score += 1
-                confluence_factors.append("EMA多頭排列")
-            elif price_now >= ema20_now:
-                ema_status = "站上 EMA20 支撐"
-                confluence_score += 1
-                confluence_factors.append("站穩EMA20")
-            else:
-                ema_status = "均線收斂整理"
-
-            # 條件 2: 近半年動能為正且強勁 (> 15%)
-            ref_idx = 120 if len(closes) > 120 else len(closes) - 1
-            momentum_6m = clean_num(
-                ((price_now - closes[-ref_idx]) / (closes[-ref_idx] or 1)) * 100
-            )
-            if momentum_6m >= 15.0:
-                confluence_score += 1
-                confluence_factors.append("半年動能強勁")
-
-            # 條件 3: 形態學看漲（上升三角 / 雙底 W 底）
-            pattern_info = detect_chart_pattern(highs, lows, closes)
-            if pattern_info["is_bullish"]:
-                confluence_score += 1
-                confluence_factors.append(pattern_info["name"].split(" ")[0])
-
-            # 條件 4: MACD 底背離
-            dif, dea, hist = calculate_macd(df["Close"])
-            d_min_close = np.argmin(closes[-20:])
-            d_min_dif = np.argmin(dif.values[-20:])
-            if (
-                closes[-1] > closes[-20 + d_min_close]
-                and dif.values[-1] > dif.values[-20 + d_min_dif]
-            ):
-                macd_status = "底背離確認"
-                confluence_score += 1
-                confluence_factors.append("MACD底背離")
-            else:
-                macd_status = "動能共振"
-
-            # 條件 5: 周線級別金叉或零軸上多頭 (HTF Bias)
-            df_weekly = (
-                df.resample("W-FRI").agg({"Close": "last"}).dropna()
-            )
-            w_dif, w_dea, _ = calculate_macd(df_weekly["Close"])
-            if (
-                len(w_dif) >= 2
-                and w_dif.iloc[-1] > w_dea.iloc[-1]
-                and w_dif.iloc[-2] <= w_dea.iloc[-2]
-            ):
-                weekly_macd = "周線金叉突破"
-                confluence_score += 1
-                confluence_factors.append("周線MACD金叉")
-            elif len(w_dif) >= 1 and w_dif.iloc[-1] > 0:
-                weekly_macd = "周線零軸上多頭"
-                confluence_score += 1
-                confluence_factors.append("周線零軸上")
-            else:
-                weekly_macd = "周線低位蓄勢"
-
-            # 條件 6: 日線 SMC FVG 缺口回踩
+            # 日線 FVG
             daily_fvg = "無缺口"
             fvg_low, fvg_high = 0.0, 0.0
-            for i in range(len(df) - 1, len(df) - 6, -1):
-                if lows[i] > highs[i - 2]:
-                    fvg_low = clean_num(highs[i - 2])
-                    fvg_high = clean_num(lows[i])
+            for i in range(len(df) - 1, max(len(df) - 10, 2), -1):
+                if d_lows[i] > d_highs[i - 2]:
+                    fvg_low = clean_num(d_highs[i - 2])
+                    fvg_high = clean_num(d_lows[i])
                     daily_fvg = f"{fvg_low} ~ {fvg_high}"
-                    confluence_score += 1
-                    confluence_factors.append("日線SMC缺口")
                     break
 
-            # 建議入場位、止損、止盈
-            d_swing_low = min(lows[-15:-1])
-            d_swing_high = max(highs[-15:-1])
-
+            # 建議進場點 (LTF Entry)：結合日線 FVG 或回測 EMA20
             if daily_fvg != "無缺口":
                 entry_zone = f"{fvg_low} - {fvg_high}"
             elif price_now >= ema20_now:
                 entry_zone = f"{clean_num(ema20_now)} - {price_now}"
             else:
-                entry_zone = (
-                    f"{clean_num(price_now * 0.98)} - {clean_num(price_now)}"
-                )
+                entry_zone = f"{clean_num(price_now * 0.98)} - {price_now}"
 
+            # 結構防守止損 (SL)：日線波段低點或前低之下
+            d_swing_low = min(d_lows[-15:-1])
             sl = clean_num(d_swing_low * 0.985)
             risk = price_now - sl
-            tp = clean_num(d_swing_high * 1.08)
+
+            # 終極止盈直接錨定「月線 1:1 等長斐波目標」
+            tp = tp_monthly_1to1 if tp_monthly_1to1 > price_now else clean_num(price_now * 1.25)
             reward = tp - price_now
             rr = f"{clean_num(reward / risk if risk > 0 else 0):.2f}"
 
-            # 歷史勝率
-            win_rate, profit_factor = backtest_strategy_win_rate(df)
+            # ----------------- 重合共振評分 (滿分 6 分) -----------------
+            confluence_score = 0
+            confluence_factors = []
+
+            # 1. 月線處於多頭主升架構
+            if monthly_trend == "月線多頭主升浪":
+                confluence_score += 1
+                confluence_factors.append("月線主升浪")
+
+            # 2. 周線 MACD 多頭或金叉
+            if "多頭" in weekly_macd or "金叉" in weekly_macd:
+                confluence_score += 1
+                confluence_factors.append(weekly_macd.split(" ")[0])
+
+            # 3. 周線或日線存在未補 FVG
+            if has_weekly_fvg or daily_fvg != "無缺口":
+                confluence_score += 1
+                confluence_factors.append("SMC價值缺口")
+
+            # 4. 日線 EMA 多頭或站穩 EMA20
+            if ema20_now > ema60_now > ema100_now:
+                confluence_score += 1
+                confluence_factors.append("EMA多頭排列")
+            elif price_now >= ema20_now:
+                confluence_score += 1
+                confluence_factors.append("站穩EMA20")
+
+            # 5. 日線內部結構反轉 (MSS / 形態)
+            if pattern_info["is_bullish"]:
+                confluence_score += 1
+                confluence_factors.append(pattern_info["name"].split(" ")[0])
+
+            # 6. 具備半年以上動能支持
+            ref_idx = 120 if len(d_closes) > 120 else len(d_closes) - 1
+            momentum_6m = clean_num(((price_now - d_closes[-ref_idx]) / (d_closes[-ref_idx] or 1)) * 100)
+            if momentum_6m > 0:
+                confluence_score += 1
+                confluence_factors.append("半年多頭動能")
 
             # 近 30 天走勢
             history = [
@@ -282,8 +282,8 @@ def analyze_stock(item):
                     "ema100": clean_num(e100),
                 }
                 for d, c, e20, e60, e100 in zip(
-                    dates[-30:],
-                    closes[-30:],
+                    d_dates[-30:],
+                    d_closes[-30:],
                     df["EMA20"].values[-30:],
                     df["EMA60"].values[-30:],
                     df["EMA100"].values[-30:],
@@ -294,47 +294,35 @@ def analyze_stock(item):
                 "code": str(item["code"]),
                 "name": str(item["name"]),
                 "price": price_now,
-                "confluenceScore": confluence_score,  # 重合度總分 (滿分 6)
-                "confluenceDetails": " · ".join(confluence_factors)
-                if confluence_factors
-                else "常規震盪",
+                "confluenceScore": int(confluence_score),
+                "confluenceDetails": " · ".join(confluence_factors) if confluence_factors else "整理格局",
                 "momentum_6m": momentum_6m,
-                "pattern": str(pattern_info["name"]),
-                "patternDesc": str(pattern_info["desc"]),
-                "emaStatus": ema_status,
-                "ema20": ema20_now,
-                "ema60": ema60_now,
-                "ema100": ema100_now,
-                "macdStatus": f"{macd_status} / {weekly_macd}",
-                "dailyFVG": daily_fvg,
+                "monthlyTrend": monthly_trend,
+                "monthly1to1TP": tp_monthly_1to1,    # 月線 1:1 目標
+                "fib0618": fib_0618,                # 0.618 目標
+                "weeklyStatus": f"{weekly_macd} (FVG: {weekly_fvg})",
+                "dailyPattern": str(pattern_info["name"]),
+                "dailyPatternDesc": str(pattern_info["desc"]),
                 "entryZone": entry_zone,
                 "sl": sl,
                 "tp": tp,
                 "rr": rr,
-                "winRate": win_rate,
-                "profitFactor": profit_factor,
-                "history": history,
+                "history": history
             }
         except Exception as e:
-            print(f"Error {item['code']}: {e}")
             continue
     return None
 
-
 results = []
 for item in WATCHLIST:
-    res = analyze_stock(item)
+    res = analyze_triad_smc(item)
     if res:
         results.append(res)
 
-# 依「重合條件值 (Confluence Score)」最高排前面，同分再比「半年動能」
-results.sort(
-    key=lambda x: (x["confluenceScore"], x["momentum_6m"]), reverse=True
-)
+# 依重合條件評分高到低排序
+results.sort(key=lambda x: (x["confluenceScore"], x["momentum_6m"]), reverse=True)
 
-with open("data.json", "w", encoding="utf-8") as f:
+with open('data.json', 'w', encoding='utf-8') as f:
     json.dump(results, f, ensure_ascii=False, indent=2)
 
-print(
-    f"已成功輸出 {len(results)} 檔標的至 data.json，重合值最高者優先排序！"
-)
+print(f"成功完成月/周/日三階嵌套 SMC 運算，輸出 {len(results)} 檔標的！")
