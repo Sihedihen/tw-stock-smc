@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台股多時框 SMC × 形態學量化選股終端</title>
+  <title>台股 SMC × 形態學 × MACD 量化選股終端</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -20,14 +20,14 @@
   <header class="bg-panel rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 border border-slate-800">
     <div class="flex items-center space-x-3">
       <div class="p-2.5 bg-cyan-950/80 border border-cyan-500/40 rounded-lg text-cyan-400">
-        <i data-lucide="shapes" class="w-5 h-5"></i>
+        <i data-lucide="activity" class="w-5 h-5"></i>
       </div>
       <div>
         <h1 class="text-base font-bold text-slate-100 flex items-center gap-2">
-          台股 SMC × 形態學量化選股終端
-          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">周線趨勢 · 形態識別 · 精確入場點</span>
+          台股 SMC × 形態學 × MACD 多維量化選股終端
+          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">周線金叉 · 底背離 · 精確入場點</span>
         </h1>
-        <p class="text-xs text-slate-400">日線上升三角 / 雙底 / 牛旗 · SMC 價值缺口 (FVG) · 嚴格風控止損 (SL)</p>
+        <p class="text-xs text-slate-400">整合上升三角 / 雙底形態 · 日線 MACD 背離驗證 · 周線 HTF 動能金叉</p>
       </div>
     </div>
     <button onclick="loadSMCData()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-900 font-semibold text-xs flex items-center gap-1.5 transition">
@@ -42,7 +42,7 @@
       <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden">
         <div class="p-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-900/60">
           <div class="text-xs font-semibold text-slate-300 flex items-center gap-2">
-            <i data-lucide="list-filter" class="w-4 h-4 text-cyan-400"></i> 半年強勢股與形態清單
+            <i data-lucide="list-filter" class="w-4 h-4 text-cyan-400"></i> 強勢形態與 MACD 掃描池
             <span id="scan-status" class="text-[11px] text-slate-400 font-normal">載入中...</span>
           </div>
           <div class="text-[11px] text-slate-400 font-mono" id="result-count">共 0 檔</div>
@@ -54,15 +54,16 @@
               <tr>
                 <th class="py-2.5 px-3">代號 / 標的</th>
                 <th class="py-2.5 px-2">現價</th>
-                <th class="py-2.5 px-2">半年動能</th>
+                <th class="py-2.5 px-2">半年漲幅</th>
                 <th class="py-2.5 px-2">識別形態學</th>
+                <th class="py-2.5 px-2">MACD 狀態</th>
                 <th class="py-2.5 px-2">建議入場區間</th>
                 <th class="py-2.5 px-2 text-right">風盈比</th>
               </tr>
             </thead>
             <tbody id="stock-table-body" class="divide-y divide-slate-800/60 font-mono">
               <tr>
-                <td colspan="6" class="py-12 text-center text-slate-400 text-xs">正在載入分析數據...</td>
+                <td colspan="7" class="py-12 text-center text-slate-400 text-xs">正在載入分析數據...</td>
               </tr>
             </tbody>
           </table>
@@ -79,7 +80,7 @@
               <span class="text-cyan-400 font-mono text-base" id="chart-symbol">--</span>
               <span class="text-xs font-normal px-2 py-0.5 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-500/30" id="chart-pattern-badge">--</span>
             </h3>
-            <p class="text-xs text-slate-400 mt-0.5">近 30 個交易日真實日線收盤</p>
+            <p class="text-xs text-slate-400 mt-0.5">近 30 個交易日真實日線走勢</p>
           </div>
           <div class="text-right">
             <div class="text-base font-bold font-mono text-slate-100" id="chart-price">NT$ --</div>
@@ -94,7 +95,7 @@
         <!-- 點位與形態學解讀卡片 -->
         <div class="p-3.5 bg-slate-900/70 rounded-lg border border-slate-800 space-y-2 text-xs">
           <div class="text-slate-200 font-semibold flex items-center gap-1.5">
-            <i data-lucide="target" class="w-3.5 h-3.5 text-cyan-400"></i> 交易執行點位計畫
+            <i data-lucide="target" class="w-3.5 h-3.5 text-cyan-400"></i> SMC × 形態 × MACD 交易計畫
           </div>
           <div class="text-slate-400 space-y-1.5 font-sans leading-relaxed" id="plan-details">
             <p>• 點選左側表格中的任一股票即可載入形態細節與入場點位分析。</p>
@@ -156,6 +157,11 @@
               ${stock.pattern}
             </span>
           </td>
+          <td class="py-2.5 px-2">
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-sans ${stock.weeklyMacd.includes('金叉') ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/30' : 'bg-slate-800 text-slate-300'}">
+              ${stock.weeklyMacd}
+            </span>
+          </td>
           <td class="py-2.5 px-2 text-cyan-400 font-medium">NT$ ${stock.entryZone}</td>
           <td class="py-2.5 px-2 text-right">
             <span class="font-bold ${parseFloat(stock.rr) >= 2.0 ? 'text-emerald-400' : 'text-slate-400'}">
@@ -175,11 +181,11 @@
       document.getElementById("chart-return-tag").innerText = `近半年累積: +${stock.momentum_6m}%`;
 
       document.getElementById("plan-details").innerHTML = `
-        <p>• <b>識別形態與結構</b>：<span class="text-amber-400 font-medium">${stock.pattern}</span>（${stock.patternDesc}）。</p>
-        <p>• <b>周線大趨勢 (HTF Bias)</b>：${stock.weeklyTrend}。</p>
-        <p>• <b>建議進場點 (Suggested Entry)</b>：回踩 <b class="text-cyan-400">NT$ ${stock.entryZone}</b> 掛單分批建倉（日線 FVG 與形態頸線共振區）。</p>
-        <p>• <b>防守止損位 (SL)</b>：<b>NT$ ${stock.sl}</b>（跌破形態起漲低點即刻失效止損出場）。</p>
-        <p>• <b>目標止盈位 (TP)</b>：<b>NT$ ${stock.tp}</b>（看向外部買方流動性高點），預估風盈比達 <b class="text-emerald-400">1 : ${stock.rr}</b>。</p>
+        <p>• <b>識別形態學</b>：<span class="text-amber-400 font-medium">${stock.pattern}</span>（${stock.patternDesc}）。</p>
+        <p>• <b>MACD 動能判斷</b>：${stock.macdDivergence}，<span class="text-cyan-400 font-medium">${stock.weeklyMacd}</span>。</p>
+        <p>• <b>建議進場點 (Suggested Entry)</b>：回踩 <b class="text-cyan-400">NT$ ${stock.entryZone}</b> 建倉（日線 FVG 與形態頸線支撐位）。</p>
+        <p>• <b>防守止損位 (SL)</b>：<b>NT$ ${stock.sl}</b>（波段起漲結構低點）。</p>
+        <p>• <b>目標止盈位 (TP)</b>：<b>NT$ ${stock.tp}</b>（上看前高流動性池 BSL），預期風盈比達 <b class="text-emerald-400">1 : ${stock.rr}</b>。</p>
       `;
 
       renderChart(stock);
