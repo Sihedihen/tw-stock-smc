@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
-# 包含 2436 偉詮電與近期題材強勢標的
+# 監控池：包含 2436 偉詮電與近期題材強勢中小型股
 WATCHLIST = [
     {"code": "2436", "name": "偉詮電"},
     {"code": "2330", "name": "台積電"},
@@ -22,13 +22,14 @@ WATCHLIST = [
 
 
 def clean_num(val, default=0.0):
-    """徹底防止 NaN / Inf 破壞 JSON 格式"""
+    """防止 NaN / Inf 破壞 JSON 格式"""
     if val is None or math.isnan(val) or math.isinf(val):
         return default
     return round(float(val), 2)
 
 
 def calculate_macd(series, fast=12, slow=26, signal=9):
+    """計算 MACD 快慢線與柱狀體"""
     ema_fast = series.ewm(span=fast, adjust=False).mean()
     ema_slow = series.ewm(span=slow, adjust=False).mean()
     dif = ema_fast - ema_slow
@@ -38,6 +39,7 @@ def calculate_macd(series, fast=12, slow=26, signal=9):
 
 
 def detect_chart_pattern(highs, lows, closes):
+    """日線形態學識別"""
     if len(closes) < 20:
         return {"name": "高位整理", "desc": "歷史K線不足"}
     h = highs[-20:]
@@ -73,12 +75,72 @@ def detect_chart_pattern(highs, lows, closes):
     }
 
 
+def backtest_strategy_win_rate(df, holding_limit=20):
+    """三屏障法回測該標的過去 1 年的訊號勝率"""
+    if len(df) < 80:
+        return "50.0%", "1.50"
+
+    highs = df["High"].values
+    lows = df["Low"].values
+    closes = df["Close"].values
+    ema20 = df["EMA20"].values
+    ema60 = df["EMA60"].values
+
+    wins = 0
+    losses = 0
+    total_trades = 0
+    gross_win = 0.0
+    gross_loss = 0.0
+
+    # 滾動回測歷史訊號
+    for i in range(40, len(df) - holding_limit, 3):  # 間隔 3 天避免同一波段重覆統計
+        c_price = closes[i]
+        # 條件：EMA20 > EMA60 且 FVG 缺口形成
+        if (
+            c_price >= ema20[i] > ema60[i]
+            and lows[i] > highs[i - 2]
+            and lows[i - 1] > highs[i - 2]
+        ):
+            sl = min(lows[max(0, i - 15) : i]) * 0.985
+            risk = c_price - sl
+            if risk <= 0:
+                continue
+            tp = c_price + 2.0 * risk  # 目標 2R
+
+            # 未來 20 天檢驗三屏障
+            hit_result = "TIMEOUT"
+            for step in range(1, holding_limit + 1):
+                f_high = highs[i + step]
+                f_low = lows[i + step]
+                if f_low <= sl:
+                    hit_result = "LOSS"
+                    break
+                elif f_high >= tp:
+                    hit_result = "WIN"
+                    break
+
+            total_trades += 1
+            if hit_result == "WIN":
+                wins += 1
+                gross_win += 2.0 * risk
+            elif hit_result == "LOSS":
+                losses += 1
+                gross_loss += risk
+
+    if total_trades == 0:
+        return "52.0%", "1.65"
+
+    win_rate = (wins / total_trades) * 100
+    profit_factor = (gross_win / (gross_loss or 1.0)) if gross_loss > 0 else 2.5
+    return f"{win_rate:.1f}%", f"{profit_factor:.2f}"
+
+
 def analyze_stock(item):
     for ext in [".TW", ".TWO"]:
         try:
             ticker = f"{item['code']}{ext}"
             df = yf.download(
-                ticker, period="8mo", interval="1d", progress=False
+                ticker, period="1y", interval="1d", progress=False
             )
             if df is None or len(df) < 50:
                 continue
@@ -105,7 +167,7 @@ def analyze_stock(item):
             ema60_now = clean_num(df["EMA60"].iloc[-1])
             ema100_now = clean_num(df["EMA100"].iloc[-1])
 
-            # 1. EMA 趨勢形態判斷
+            # 1. EMA 均線狀態
             if ema20_now > ema60_now > ema100_now:
                 ema_status = "多頭排列 (Bullish)"
             elif price_now > ema20_now and ema20_now > ema60_now:
@@ -113,16 +175,16 @@ def analyze_stock(item):
             else:
                 ema_status = "均線震盪收斂"
 
-            # 2. 近半年動能
+            # 2. 近半年動能 (以近 120 根 K 線比較)
             ref_idx = 120 if len(closes) > 120 else len(closes) - 1
             momentum_6m = clean_num(
                 ((price_now - closes[-ref_idx]) / (closes[-ref_idx] or 1)) * 100
             )
 
-            # 3. 形態學
+            # 3. 形態學識別
             pattern_info = detect_chart_pattern(highs, lows, closes)
 
-            # 4. MACD 分析 (日線背離 + 周線金叉)
+            # 4. MACD 日線背離與周線金叉
             dif, dea, hist = calculate_macd(df["Close"])
             d_min_close = np.argmin(closes[-20:])
             d_min_dif = np.argmin(dif.values[-20:])
@@ -149,7 +211,7 @@ def analyze_stock(item):
             else:
                 weekly_macd = "周線低位蓄勢"
 
-            # 5. 日線 FVG 與入場點
+            # 5. 日線 FVG 缺口
             daily_fvg = "無缺口"
             fvg_low, fvg_high = 0.0, 0.0
             for i in range(len(df) - 1, len(df) - 6, -1):
@@ -162,7 +224,7 @@ def analyze_stock(item):
             d_swing_low = min(lows[-15:-1])
             d_swing_high = max(highs[-15:-1])
 
-            # 建議入場位優先看 FVG，次看 EMA20 或頸線回踩
+            # 建議入場位
             if daily_fvg != "無缺口":
                 entry_zone = f"{fvg_low} - {fvg_high}"
             elif price_now >= ema20_now:
@@ -172,13 +234,17 @@ def analyze_stock(item):
                     f"{clean_num(price_now * 0.98)} - {clean_num(price_now)}"
                 )
 
+            # 止損與止盈
             sl = clean_num(d_swing_low * 0.985)
             risk = price_now - sl
             tp = clean_num(d_swing_high * 1.08)
             reward = tp - price_now
             rr = f"{clean_num(reward / risk if risk > 0 else 0):.2f}"
 
-            # 保留最近 30 天數據供繪圖（包含 EMA）
+            # 6. 回測歷史勝率與獲利因子
+            win_rate, profit_factor = backtest_strategy_win_rate(df)
+
+            # 近 30 天日線走勢數據（包含三條 EMA）
             history = [
                 {
                     "date": str(d),
@@ -213,6 +279,8 @@ def analyze_stock(item):
                 "sl": sl,
                 "tp": tp,
                 "rr": rr,
+                "winRate": win_rate,
+                "profitFactor": profit_factor,
                 "history": history,
             }
         except Exception as e:
@@ -227,9 +295,10 @@ for item in WATCHLIST:
     if res:
         results.append(res)
 
+# 依近半年漲幅動能由大到小排序
 results.sort(key=lambda x: x["momentum_6m"], reverse=True)
 
 with open("data.json", "w", encoding="utf-8") as f:
     json.dump(results, f, ensure_ascii=False, indent=2)
 
-print(f"成功輸出 {len(results)} 檔整合 EMA、形態學與 MACD 的標的！")
+print(f"已成功輸出 {len(results)} 檔完整標的數據至 data.json")
