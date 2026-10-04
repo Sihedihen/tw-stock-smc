@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台股 SMC × 形態學 × EMA × 重合共振選股終端</title>
+  <title>台股月周日三階 SMC × 形態學 × EMA 多重共振終端</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -20,14 +20,14 @@
   <header class="bg-panel rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 border border-slate-800">
     <div class="flex items-center space-x-3">
       <div class="p-2.5 bg-cyan-950/80 border border-cyan-500/40 rounded-lg text-cyan-400">
-        <i data-lucide="zap" class="w-5 h-5"></i>
+        <i data-lucide="git-merge" class="w-5 h-5"></i>
       </div>
       <div>
         <h1 class="text-base font-bold text-slate-100 flex items-center gap-2">
-          台股 SMC 多重共振量化選股終端
-          <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">重合條件評分 · 形態識別 · 勝率驗證</span>
+          台股月/周/日三階嵌套 SMC 量化終端
+          <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">月線 1:1 對稱止盈 · 周線 SMC · 日線 MSS 進場</span>
         </h1>
-        <p class="text-xs text-slate-400">涵蓋 22 檔主流與潛力股 · 重合條件越多機率越高 (滿分 6 分) · 均線 / 形態 / FVG / 背離共振</p>
+        <p class="text-xs text-slate-400">月線定趨勢與等長目標 · 周線過濾 FVG 關鍵陣列 · 日線內部反轉捕捉最佳進場位</p>
       </div>
     </div>
     <button onclick="loadSMCData()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-900 font-semibold text-xs flex items-center gap-1.5 transition">
@@ -42,7 +42,7 @@
       <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden">
         <div class="p-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-900/60">
           <div class="text-xs font-semibold text-slate-300 flex items-center gap-2">
-            <i data-lucide="list-filter" class="w-4 h-4 text-cyan-400"></i> 多重共振強度排行池
+            <i data-lucide="list-filter" class="w-4 h-4 text-cyan-400"></i> 三階共振強弱池
             <span id="scan-status" class="text-[11px] text-slate-400 font-normal">載入中...</span>
           </div>
           <div class="text-[11px] text-slate-400 font-mono" id="result-count">共 0 檔</div>
@@ -53,18 +53,17 @@
             <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800 font-mono">
               <tr>
                 <th class="py-2.5 px-3">代號 / 標的</th>
-                <th class="py-2.5 px-2 text-center text-amber-300">重合條件值</th>
+                <th class="py-2.5 px-2 text-center text-amber-300">重合條件</th>
                 <th class="py-2.5 px-2">現價</th>
-                <th class="py-2.5 px-2">半年動能</th>
-                <th class="py-2.5 px-2">形態學識別</th>
+                <th class="py-2.5 px-2 text-indigo-300">月線 1:1 止盈目標</th>
+                <th class="py-2.5 px-2">日線反轉形態</th>
                 <th class="py-2.5 px-2">建議進場點</th>
-                <th class="py-2.5 px-2 text-center text-emerald-400">歷史勝率 (1Y)</th>
-                <th class="py-2.5 px-2 text-right">風盈比</th>
+                <th class="py-2.5 px-2 text-right">大波段風盈比</th>
               </tr>
             </thead>
             <tbody id="stock-table-body" class="divide-y divide-slate-800/60 font-mono">
               <tr>
-                <td colspan="8" class="py-12 text-center text-slate-400 text-xs">正在載入分析數據...</td>
+                <td colspan="7" class="py-12 text-center text-slate-400 text-xs">正在載入三階嵌套數據...</td>
               </tr>
             </tbody>
           </table>
@@ -72,7 +71,7 @@
       </div>
     </section>
 
-    <!-- 右側圖表與多時框交易計畫 (5 欄) -->
+    <!-- 右側圖表與深度交易計畫 (5 欄) -->
     <section class="xl:col-span-5 space-y-4">
       <div class="bg-panel rounded-xl p-4 border border-slate-800 space-y-4">
         <div class="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -82,7 +81,7 @@
               <span class="text-xs font-normal px-2 py-0.5 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-500/30" id="chart-pattern-badge">--</span>
             </h3>
             <div class="flex items-center gap-2 mt-1 text-[11px] font-mono">
-              <span class="text-cyan-400">● 收盤價</span>
+              <span class="text-cyan-400">● 日收盤價</span>
               <span class="text-amber-400">● EMA20</span>
               <span class="text-indigo-400">● EMA60</span>
               <span class="text-rose-400">● EMA100</span>
@@ -98,14 +97,14 @@
           <canvas id="realtimeChart"></canvas>
         </div>
 
-        <!-- 點位與重合因子解讀卡片 -->
+        <!-- 月/周/日三階嵌套計畫卡片 -->
         <div class="p-3.5 bg-slate-900/70 rounded-lg border border-slate-800 space-y-2 text-xs">
           <div class="text-slate-200 font-semibold flex items-center justify-between">
-            <span class="flex items-center gap-1.5"><i data-lucide="target" class="w-3.5 h-3.5 text-cyan-400"></i> 多維交易執行計畫</span>
-            <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" id="backtest-summary-tag">勝率: --</span>
+            <span class="flex items-center gap-1.5"><i data-lucide="compass" class="w-3.5 h-3.5 text-cyan-400"></i> 月周日三階交易規劃</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" id="tp-summary-tag">月線目標: --</span>
           </div>
           <div class="text-slate-400 space-y-1.5 font-sans leading-relaxed" id="plan-details">
-            <p>• 點選左側表格中的任一股票即可載入形態細節與重合共振分析。</p>
+            <p>• 點選左側表格中的任一股票即可載入三階結構與 1:1 斐波那契點位分析。</p>
           </div>
         </div>
       </div>
@@ -126,9 +125,7 @@
         if (!res.ok) throw new Error(`無法取得檔案 (HTTP ${res.status})`);
         
         const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) {
-          throw new Error("data.json 內容為空");
-        }
+        if (!Array.isArray(data) || data.length === 0) throw new Error("data.json 內容為空");
 
         analyzedResults = data;
         renderResults();
@@ -141,7 +138,7 @@
         document.getElementById("scan-status").innerText = "讀取失敗";
         document.getElementById("stock-table-body").innerHTML = `
           <tr>
-            <td colspan="8" class="py-8 text-center text-rose-400 text-xs font-sans">
+            <td colspan="7" class="py-8 text-center text-rose-400 text-xs font-sans">
               ⚠ <b>${err.message}</b>
             </td>
           </tr>
@@ -164,7 +161,7 @@
         const score = stock.confluenceScore || 0;
         let scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-400">${score} / 6</span>`;
         if (score >= 5) {
-          scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-950/80 text-rose-300 border border-rose-500/40 animate-pulse">🔥 ${score} / 6 (極高)</span>`;
+          scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-950/80 text-rose-300 border border-rose-500/40">🔥 ${score} / 6 (極高)</span>`;
         } else if (score >= 3) {
           scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">⚡ ${score} / 6 (高)</span>`;
         }
@@ -176,22 +173,13 @@
           </td>
           <td class="py-2.5 px-2 text-center">${scoreBadge}</td>
           <td class="py-2.5 px-2 font-semibold text-slate-200">NT$ ${stock.price}</td>
+          <td class="py-2.5 px-2 font-bold text-indigo-300">NT$ ${stock.monthly1to1TP}</td>
           <td class="py-2.5 px-2">
-            <span class="font-bold ${stock.momentum_6m >= 0 ? 'text-rose-400' : 'text-emerald-400'}">
-              ${stock.momentum_6m >= 0 ? '+' : ''}${stock.momentum_6m}%
-            </span>
-          </td>
-          <td class="py-2.5 px-2">
-            <span class="px-2 py-0.5 rounded text-[10px] font-sans ${stock.pattern.includes('三角') ? 'bg-amber-950/80 text-amber-300 border border-amber-500/40' : (stock.pattern.includes('雙底') ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-slate-300')}">
-              ${stock.pattern}
+            <span class="px-2 py-0.5 rounded text-[10px] font-sans ${stock.dailyPattern.includes('突破') || stock.dailyPattern.includes('三角') ? 'bg-amber-950/80 text-amber-300 border border-amber-500/40' : 'bg-slate-800 text-slate-300'}">
+              ${stock.dailyPattern}
             </span>
           </td>
           <td class="py-2.5 px-2 text-cyan-400 font-medium">NT$ ${stock.entryZone}</td>
-          <td class="py-2.5 px-2 text-center">
-            <span class="px-2 py-0.5 rounded text-[11px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30">
-              ${stock.winRate || '--'}
-            </span>
-          </td>
           <td class="py-2.5 px-2 text-right">
             <span class="font-bold ${parseFloat(stock.rr) >= 2.0 ? 'text-emerald-400' : 'text-slate-400'}">
               1 : ${stock.rr}
@@ -205,19 +193,17 @@
 
     function selectStock(stock) {
       document.getElementById("chart-symbol").innerText = `${stock.code} ${stock.name}`;
-      document.getElementById("chart-pattern-badge").innerText = stock.pattern;
+      document.getElementById("chart-pattern-badge").innerText = stock.dailyPattern;
       document.getElementById("chart-price").innerText = `NT$ ${stock.price}`;
       document.getElementById("chart-confluence-badge").innerText = `重合值: ${stock.confluenceScore}/6 (${stock.confluenceDetails})`;
-
-      const winRateText = stock.winRate ? `${stock.winRate} (獲利因子: ${stock.profitFactor})` : "--";
-      document.getElementById("backtest-summary-tag").innerText = `歷史勝率: ${winRateText}`;
+      document.getElementById("tp-summary-tag").innerText = `月線 1:1 目標: NT$ ${stock.monthly1to1TP}`;
 
       document.getElementById("plan-details").innerHTML = `
-        <p>• <b>多重共振重合條件 (Confluence: ${stock.confluenceScore}/6)</b>：<span class="text-amber-300 font-semibold">${stock.confluenceDetails}</span>。</p>
-        <p>• <b>形態與均線架構</b>：<span class="text-amber-400 font-medium">${stock.pattern}</span>，${stock.emaStatus}（EMA20: ${stock.ema20} / EMA60: ${stock.ema60}）。</p>
-        <p>• <b>MACD 動能訊號</b>：<span class="text-cyan-400 font-medium">${stock.macdStatus}</span>。</p>
-        <p>• <b>建議進場點 (Suggested Entry)</b>：回踩 <b class="text-cyan-400">NT$ ${stock.entryZone}</b> 掛單分批建倉。</p>
-        <p>• <b>防守止損 (SL)</b>：<b>NT$ ${stock.sl}</b>（波段起漲結構低點），<b>目標止盈 (TP)</b>：<b>NT$ ${stock.tp}</b>，預期風盈比 <b class="text-emerald-400">1 : ${stock.rr}</b>。</p>
+        <p>• <b>月線大架構 (Macro HTF)</b>：${stock.monthlyTrend}，1:1 對稱延伸目標價為 <b class="text-indigo-300">NT$ ${stock.monthly1to1TP}</b>（第一獲利關卡 0.618 位於 NT$ ${stock.fib0618}）。</p>
+        <p>• <b>周線 SMC 關鍵位 (Intermediate HTF)</b>：${stock.weeklyStatus}。</p>
+        <p>• <b>日線內部結構反轉 (Micro LTF)</b>：<span class="text-amber-300 font-medium">${stock.dailyPattern}</span>（${stock.dailyPatternDesc}）。</p>
+        <p>• <b>建議進場點 (Suggested Entry)</b>：回測 <b class="text-cyan-400">NT$ ${stock.entryZone}</b> 掛單（日線 FVG 與 EMA20 共振支撐位）。</p>
+        <p>• <b>防守止損 (SL)</b>：<b>NT$ ${stock.sl}</b>（波段起漲結構低點），大波段風盈比高達 <b class="text-emerald-400">1 : ${stock.rr}</b>。</p>
       `;
 
       renderChart(stock);
