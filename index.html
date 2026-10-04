@@ -27,9 +27,9 @@
       <div>
         <h1 class="text-base font-bold text-slate-100 flex items-center gap-2">
           台股全週期 SMC × 自研原生效能 K 棒終端
-          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">自研 Canvas 渲染 · 自由拖曳縮放 · 十字線價位提示</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">嚴格 SMC 訂單塊 (OB) 止損防守</span>
         </h1>
-        <p class="text-xs text-slate-400">滑鼠拖曳平移歷史 · 滾輪縮放 · 懸浮即時顯示日期、開高低收與價位標籤 · 聯動 MACD 與 EMA</p>
+        <p class="text-xs text-slate-400">機構訂單塊底端防守 · 獨立策略勝率 · 滑鼠拖曳平移與滾輪縮放 · 懸浮十字線即時報價</p>
       </div>
     </div>
     <button onclick="loadSMCData()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-900 font-semibold text-xs flex items-center gap-1.5 transition">
@@ -74,7 +74,7 @@
       <!-- 交易規劃卡片 -->
       <div class="p-4 bg-panel rounded-xl border border-slate-800 space-y-2 text-xs">
         <div class="text-slate-200 font-semibold flex items-center justify-between">
-          <span class="flex items-center gap-1.5"><i data-lucide="compass" class="w-3.5 h-3.5 text-cyan-400"></i> 三階交易執行規劃</span>
+          <span class="flex items-center gap-1.5"><i data-lucide="compass" class="w-3.5 h-3.5 text-cyan-400"></i> SMC 機構訂單塊 (OB) 交易規劃</span>
           <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" id="backtest-tag">勝率: --</span>
         </div>
         <div class="text-slate-400 space-y-1.5 font-sans leading-relaxed" id="plan-details">
@@ -142,7 +142,6 @@
     let currentTF = '1d';
     let analyzedResults = [];
 
-    // 互動視窗參數
     let barWidth = 11;
     let barSpacing = 4;
     let offsetX = 0;
@@ -261,7 +260,7 @@
         return maxP - (y / chartH) * (maxP - minP);
       }
 
-      // 背景網格與右側價格軸刻度
+      // 背景網格與價格軸刻度
       cCtx.strokeStyle = "rgba(30, 41, 59, 0.4)";
       cCtx.lineWidth = 1;
       cCtx.fillStyle = "#64748b";
@@ -339,7 +338,7 @@
         }
       }
 
-      // 最新價格右側常駐標籤
+      // 最新價格標籤
       const latestBar = bars[bars.length - 1];
       if (latestBar) {
         const latestY = getY(latestBar.close);
@@ -351,9 +350,8 @@
         cCtx.fillText(`NT$ ${latestBar.close.toFixed(1)}`, chartW + 4, latestY + 4);
       }
 
-      // 十字光標、價格氣泡、時間氣泡與 HUD 提示
+      // 十字線與價位浮動標籤
       if (mousePos.inChart && mousePos.x >= 0 && mousePos.x <= chartW && mousePos.y >= 0 && mousePos.y <= chartH) {
-        // 1. 十字線
         cCtx.strokeStyle = "rgba(148, 163, 184, 0.6)";
         cCtx.lineWidth = 1;
         cCtx.setLineDash([3, 3]);
@@ -365,7 +363,7 @@
         cCtx.stroke();
         cCtx.setLineDash([]);
 
-        // 2. 右側價格氣泡
+        // 右側價格氣泡
         const hoveredPrice = getPriceAtY(mousePos.y);
         cCtx.fillStyle = "#0284c7";
         cCtx.fillRect(chartW, mousePos.y - 9, rightPadding, 18);
@@ -374,19 +372,17 @@
         cCtx.textAlign = "left";
         cCtx.fillText(`NT$ ${hoveredPrice.toFixed(1)}`, chartW + 4, mousePos.y + 4);
 
-        // 3. 獲取游標選中的 K 棒
+        // 底部時間氣泡與 HUD
         const hoverIdx = Math.floor((mousePos.x + offsetX) / totalItemW);
         if (hoverIdx >= 0 && hoverIdx < bars.length) {
           const hb = bars[hoverIdx];
 
-          // 底部時間氣泡
           cCtx.fillStyle = "#0284c7";
           cCtx.fillRect(mousePos.x - 45, chartH + 2, 90, 18);
           cCtx.fillStyle = "#ffffff";
           cCtx.textAlign = "center";
           cCtx.fillText(hb.time, mousePos.x, chartH + 15);
 
-          // 更新頂部 HUD 資訊
           const chg = hb.close - hb.open;
           const chgPct = ((chg / (hb.open || 1)) * 100).toFixed(2);
           const isUp = chg >= 0;
@@ -519,6 +515,8 @@
           scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-950/80 text-rose-300 border border-rose-500/40">🔥 ${score} / 6 (極高)</span>`;
         } else if (score >= 4) {
           scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">⚡ ${score} / 6 (高)</span>`;
+        } else if (score >= 3) {
+          scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-medium bg-cyan-950/80 text-cyan-300 border border-cyan-500/30">${score} / 6 (中)</span>`;
         }
 
         const monthlyTP = stock.monthly1to1TP ? `NT$ ${stock.monthly1to1TP}` : (stock.tp ? `NT$ ${stock.tp}` : "待更新");
@@ -553,16 +551,15 @@
       document.getElementById("chart-symbol").innerText = `${stock.code} ${stock.name}`;
       document.getElementById("chart-pattern-badge").innerText = stock.dailyPattern || "突破蓄勢";
       document.getElementById("chart-confluence-badge").innerText = `共振: ${stock.confluenceScore}/6 (${stock.confluenceDetails || '整理'})`;
-      document.getElementById("backtest-tag").innerText = `歷史勝率: ${stock.winRate} (PF: ${stock.profitFactor})`;
+      document.getElementById("backtest-tag").innerText = `策略歷史勝率: ${stock.winRate} (PF: ${stock.profitFactor})`;
 
       document.getElementById("plan-details").innerHTML = `
-        <p>• <b>歷史回測表現</b>：三屏障法過去 1 年策略勝率 <b class="text-amber-400">${stock.winRate}</b>，獲利因子 (Profit Factor) 為 <b class="text-cyan-400">${stock.profitFactor}</b>。</p>
-        <p>• <b>月線 1:1 對稱延伸目標</b>：<b class="text-indigo-300">NT$ ${stock.monthly1to1TP || stock.tp}</b>${stock.fib0618 ? `（第一波減倉位 0.618 位於 NT$ ${stock.fib0618}）` : ''}。</p>
-        <p>• <b>建議進場 (Entry)</b>：回測 <b class="text-cyan-400">NT$ ${stock.entryZone || stock.price}</b> 掛單分批建倉。</p>
-        <p>• <b>防守止損 (SL)</b>：<b>NT$ ${stock.sl}</b>，預期大波段風盈比達 <b class="text-emerald-400">1 : ${stock.rr || '2.0'}</b>。</p>
+        <p>• <b>SMC 機構訂單塊 (Bullish OB) 防守位</b>：最後放量推進前之陰線底端，防守止損 (SL) 設為 <b class="text-rose-400">NT$ ${stock.sl}</b>（${stock.obDate ? `OB 形成於 ${stock.obDate}` : '結構起漲支撐'}）。</p>
+        <p>• <b>月線 1:1 對稱延伸目標 (TP)</b>：大週期等幅目標價為 <b class="text-indigo-300">NT$ ${stock.monthly1to1TP || stock.tp}</b>${stock.fib0618 ? `（第一波減倉位 0.618 位於 NT$ ${stock.fib0618}）` : ''}。</p>
+        <p>• <b>建議進場區間 (Entry Zone)</b>：回踩 OB 與 FVG 共振區 <b class="text-cyan-400">NT$ ${stock.entryZone || stock.price}</b> 掛單分批建倉。</p>
+        <p>• <b>真實波段風盈比</b>：合理健康風盈比達 <b class="text-emerald-400">1 : ${stock.rr || '2.0'}</b>，避免過近止損遭受莊家掃蕩流動性。</p>
       `;
 
-      // 自動對齊到最新一根 K 棒
       const bars = getActiveBars();
       const chartW = cCanvas.width - 75;
       offsetX = Math.max(0, bars.length * (barWidth + barSpacing) - chartW);
