@@ -240,10 +240,37 @@
       renderAllCharts();
     }
 
-    function generateTFData(history, tf) {
-      if (!history || history.length === 0) return { labels: [], closes: [], ema20s: [], ema60s: [], ema100s: [], difs: [], deas: [], hists: [] };
+    function extractHistory(stock) {
+      if (stock.history && Array.isArray(stock.history) && stock.history.length > 0) {
+        return stock.history;
+      }
+      if (stock.timeframes && stock.timeframes['1d'] && stock.timeframes['1d'].length > 0) {
+        return stock.timeframes['1d'].map(item => ({
+          date: String(item.time).slice(5),
+          close: item.close,
+          ema20: item.ema20,
+          ema60: item.ema60,
+          ema100: item.ema100,
+          dif: item.dif,
+          dea: item.dea,
+          hist: item.hist
+        }));
+      }
+      // 防呆預設
+      const base = Number(stock.price) || 100;
+      return Array.from({ length: 25 }, (_, i) => ({
+        date: `09/${i + 1}`,
+        close: Number((base * (1 + (i - 12) * 0.005)).toFixed(1)),
+        ema20: base,
+        ema60: base * 0.98,
+        ema100: base * 0.96,
+        dif: 0.5,
+        dea: 0.3,
+        hist: 0.4
+      }));
+    }
 
-      // 日線
+    function generateTFData(history, tf) {
       if (tf === '1d') {
         const labels = history.map(h => h.date);
         const closes = history.map(h => h.close);
@@ -260,13 +287,11 @@
           deas = difs.map(d => Number((d * 0.7).toFixed(2)));
           hists = difs.map((d, i) => Number(((d - deas[i]) * 2).toFixed(2)));
         }
-
         return { labels, closes, ema20s, ema60s, ema100s, difs, deas, hists };
       }
 
-      // 周線 / 月線
       if (tf === '1w' || tf === '1M') {
-        const step = tf === '1w' ? 5 : 20;
+        const step = tf === '1w' ? 5 : 15;
         const labels = [], closes = [], ema20s = [], ema60s = [], ema100s = [], difs = [], deas = [], hists = [];
         for (let i = 0; i < history.length; i += step) {
           const slice = history.slice(i, i + step);
@@ -285,7 +310,6 @@
         return { labels, closes, ema20s, ema60s, ema100s, difs, deas, hists };
       }
 
-      // 分鐘線 (1m, 5m, 15m, 1h)
       const count = tf === '1m' ? 30 : (tf === '5m' ? 24 : 20);
       const lastClose = history[history.length - 1].close;
       const labels = [], closes = [], ema20s = [], ema60s = [], ema100s = [], difs = [], deas = [], hists = [];
@@ -309,147 +333,150 @@
     }
 
     function renderAllCharts() {
-      if (!currentStock || !currentStock.history) return;
+      if (!currentStock) return;
+      const history = extractHistory(currentStock);
+      const data = generateTFData(history, currentTF);
 
-      const data = generateTFData(currentStock.history, currentTF);
+      try {
+        const ctxMain = document.getElementById("mainChartCanvas").getContext("2d");
+        if (mainChartInstance) mainChartInstance.destroy();
 
-      // 1. 繪製主圖 (價格 + EMA)
-      const ctxMain = document.getElementById("mainChartCanvas").getContext("2d");
-      if (mainChartInstance) mainChartInstance.destroy();
-
-      mainChartInstance = new Chart(ctxMain, {
-        type: 'line',
-        data: {
-          labels: data.labels,
-          datasets: [
-            {
-              label: '走勢/收盤',
-              data: data.closes,
-              borderColor: '#06b6d4',
-              backgroundColor: 'rgba(6, 182, 212, 0.08)',
-              borderWidth: 2,
-              tension: 0.15,
-              pointRadius: 2,
-              fill: true
-            },
-            {
-              label: 'EMA 20',
-              data: data.ema20s,
-              borderColor: '#f59e0b',
-              borderWidth: 1.5,
-              pointRadius: 0,
-              tension: 0.2
-            },
-            {
-              label: 'EMA 60',
-              data: data.ema60s,
-              borderColor: '#818cf8',
-              borderWidth: 1.5,
-              pointRadius: 0,
-              tension: 0.2
-            },
-            {
-              label: 'EMA 100',
-              data: data.ema100s,
-              borderColor: '#f43f5e',
-              borderWidth: 1.5,
-              pointRadius: 0,
-              tension: 0.2
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: (c) => `${c.dataset.label}: NT$ ${c.parsed.y}`
+        mainChartInstance = new Chart(ctxMain, {
+          type: 'line',
+          data: {
+            labels: data.labels,
+            datasets: [
+              {
+                label: '走勢/收盤',
+                data: data.closes,
+                borderColor: '#06b6d4',
+                backgroundColor: 'rgba(6, 182, 212, 0.08)',
+                borderWidth: 2,
+                tension: 0.15,
+                pointRadius: 2,
+                fill: true
+              },
+              {
+                label: 'EMA 20',
+                data: data.ema20s,
+                borderColor: '#f59e0b',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                tension: 0.2
+              },
+              {
+                label: 'EMA 60',
+                data: data.ema60s,
+                borderColor: '#818cf8',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                tension: 0.2
+              },
+              {
+                label: 'EMA 100',
+                data: data.ema100s,
+                borderColor: '#f43f5e',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                tension: 0.2
               }
-            }
+            ]
           },
-          scales: {
-            x: {
-              grid: { color: 'rgba(51, 65, 85, 0.2)' },
-              ticks: { color: '#64748b', font: { family: 'monospace', size: 10 } }
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (c) => `${c.dataset.label}: NT$ ${c.parsed.y}`
+                }
+              }
             },
-            y: {
-              grid: { color: 'rgba(51, 65, 85, 0.2)' },
-              ticks: {
-                color: '#64748b',
-                font: { family: 'monospace', size: 10 },
-                callback: (v) => `NT$ ${v}`
+            scales: {
+              x: {
+                grid: { color: 'rgba(51, 65, 85, 0.2)' },
+                ticks: { color: '#64748b', font: { family: 'monospace', size: 10 } }
+              },
+              y: {
+                grid: { color: 'rgba(51, 65, 85, 0.2)' },
+                ticks: {
+                  color: '#64748b',
+                  font: { family: 'monospace', size: 10 },
+                  callback: (v) => `NT$ ${v}`
+                }
               }
             }
           }
-        }
-      });
+        });
 
-      // 2. 繪製副圖 (MACD)
-      const ctxMACD = document.getElementById("macdChartCanvas").getContext("2d");
-      if (macdChartInstance) macdChartInstance.destroy();
+        const ctxMACD = document.getElementById("macdChartCanvas").getContext("2d");
+        if (macdChartInstance) macdChartInstance.destroy();
 
-      const histColors = data.hists.map(v => v >= 0 ? 'rgba(34, 197, 94, 0.75)' : 'rgba(239, 68, 68, 0.75)');
+        const histColors = data.hists.map(v => v >= 0 ? 'rgba(34, 197, 94, 0.75)' : 'rgba(239, 68, 68, 0.75)');
 
-      macdChartInstance = new Chart(ctxMACD, {
-        data: {
-          labels: data.labels,
-          datasets: [
-            {
-              type: 'bar',
-              label: 'MACD 能量柱',
-              data: data.hists,
-              backgroundColor: histColors,
-              borderWidth: 0,
-              barPercentage: 0.65
-            },
-            {
-              type: 'line',
-              label: 'DIF (12, 26)',
-              data: data.difs,
-              borderColor: '#06b6d4',
-              borderWidth: 1.5,
-              pointRadius: 0,
-              tension: 0.2
-            },
-            {
-              type: 'line',
-              label: 'DEA (9)',
-              data: data.deas,
-              borderColor: '#f59e0b',
-              borderWidth: 1.5,
-              pointRadius: 0,
-              tension: 0.2
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: (c) => `${c.dataset.label}: ${c.parsed.y}`
+        macdChartInstance = new Chart(ctxMACD, {
+          type: 'bar', // 明確宣告頂層型態
+          data: {
+            labels: data.labels,
+            datasets: [
+              {
+                type: 'bar',
+                label: 'MACD 能量柱',
+                data: data.hists,
+                backgroundColor: histColors,
+                borderWidth: 0,
+                barPercentage: 0.65
+              },
+              {
+                type: 'line',
+                label: 'DIF (12, 26)',
+                data: data.difs,
+                borderColor: '#06b6d4',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                tension: 0.2
+              },
+              {
+                type: 'line',
+                label: 'DEA (9)',
+                data: data.deas,
+                borderColor: '#f59e0b',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                tension: 0.2
               }
-            }
+            ]
           },
-          scales: {
-            x: {
-              grid: { display: false },
-              ticks: { display: false }
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (c) => `${c.dataset.label}: ${c.parsed.y}`
+                }
+              }
             },
-            y: {
-              grid: { color: 'rgba(51, 65, 85, 0.15)' },
-              ticks: {
-                color: '#64748b',
-                font: { family: 'monospace', size: 9 }
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { display: false }
+              },
+              y: {
+                grid: { color: 'rgba(51, 65, 85, 0.15)' },
+                ticks: {
+                  color: '#64748b',
+                  font: { family: 'monospace', size: 9 }
+                }
               }
             }
           }
-        }
-      });
+        });
+      } catch (err) {
+        console.error("繪圖失敗:", err);
+      }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
