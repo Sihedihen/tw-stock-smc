@@ -45,8 +45,7 @@ def calculate_macd(series, fast=12, slow=26, signal=9):
     return dif, dea, hist
 
 
-def to_lightweight_candles(df, is_intraday=False):
-    """轉換成 TradingView lightweight-charts 官方要求的時間格式"""
+def format_df_to_bars(df, is_intraday=False):
     if df is None or len(df) == 0:
         return []
 
@@ -68,15 +67,16 @@ def to_lightweight_candles(df, is_intraday=False):
     df["DEA"] = dea
     df["HIST"] = hist
 
-    candles = []
+    bars = []
     for idx, row in df.iterrows():
-        # 分鐘級別用 UNIX 時間戳 (秒)；日/周/月用 YYYY-MM-DD
-        t_val = (
-            int(idx.timestamp()) if is_intraday else idx.strftime("%Y-%m-%d")
+        t_str = (
+            idx.strftime("%m/%d %H:%M")
+            if is_intraday
+            else idx.strftime("%Y-%m-%d")
         )
-        candles.append(
+        bars.append(
             {
-                "time": t_val,
+                "time": t_str,
                 "open": clean_num(row["Open"]),
                 "high": clean_num(row["High"]),
                 "low": clean_num(row["Low"]),
@@ -89,7 +89,7 @@ def to_lightweight_candles(df, is_intraday=False):
                 "hist": clean_num(row["HIST"]),
             }
         )
-    return candles
+    return bars
 
 
 def analyze_stock(item):
@@ -105,45 +105,23 @@ def analyze_stock(item):
                 df_daily.columns = df_daily.columns.droplevel(1)
             df_daily = df_daily.dropna(subset=["Close"])
 
-            # 抓取盤中分時真實數據 (1m, 5m, 15m, 60m)
-            df_1m, df_5m, df_15m, df_1h = None, None, None, None
-            try:
-                df_1m = yf.download(
-                    ticker, period="5d", interval="1m", progress=False
-                )
-                if isinstance(df_1m.columns, pd.MultiIndex):
-                    df_1m.columns = df_1m.columns.droplevel(1)
-            except Exception:
-                pass
+            # 分時數據抓取 (擴大天數保留完整微觀週期)
+            def get_sub(iv, p):
+                try:
+                    d = yf.download(
+                        ticker, period=p, interval=iv, progress=False
+                    )
+                    if d is not None and isinstance(d.columns, pd.MultiIndex):
+                        d.columns = d.columns.droplevel(1)
+                    return d
+                except Exception:
+                    return None
 
-            try:
-                df_5m = yf.download(
-                    ticker, period="10d", interval="5m", progress=False
-                )
-                if isinstance(df_5m.columns, pd.MultiIndex):
-                    df_5m.columns = df_5m.columns.droplevel(1)
-            except Exception:
-                pass
+            df_1m = get_sub("1m", "5d")
+            df_5m = get_sub("5m", "15d")
+            df_15m = get_sub("15m", "30d")
+            df_1h = get_sub("60m", "60d")
 
-            try:
-                df_15m = yf.download(
-                    ticker, period="15d", interval="15m", progress=False
-                )
-                if isinstance(df_15m.columns, pd.MultiIndex):
-                    df_15m.columns = df_15m.columns.droplevel(1)
-            except Exception:
-                pass
-
-            try:
-                df_1h = yf.download(
-                    ticker, period="60d", interval="60m", progress=False
-                )
-                if isinstance(df_1h.columns, pd.MultiIndex):
-                    df_1h.columns = df_1h.columns.droplevel(1)
-            except Exception:
-                pass
-
-            # 周線與月線聚合
             df_weekly = (
                 df_daily.resample("W-FRI")
                 .agg(
@@ -171,18 +149,16 @@ def analyze_stock(item):
                 .dropna()
             )
 
-            # 打包全時框真實 K 線 (包含歷史完整數據)
             timeframes = {
-                "1m": to_lightweight_candles(df_1m, is_intraday=True),
-                "5m": to_lightweight_candles(df_5m, is_intraday=True),
-                "15m": to_lightweight_candles(df_15m, is_intraday=True),
-                "1h": to_lightweight_candles(df_1h, is_intraday=True),
-                "1d": to_lightweight_candles(df_daily, is_intraday=False),
-                "1w": to_lightweight_candles(df_weekly, is_intraday=False),
-                "1M": to_lightweight_candles(df_monthly, is_intraday=False),
+                "1m": format_df_to_bars(df_1m, True),
+                "5m": format_df_to_bars(df_5m, True),
+                "15m": format_df_to_bars(df_15m, True),
+                "1h": format_df_to_bars(df_1h, True),
+                "1d": format_df_to_bars(df_daily, False),
+                "1w": format_df_to_bars(df_weekly, False),
+                "1M": format_df_to_bars(df_monthly, False),
             }
 
-            # 點位與回測計算
             d_closes = df_daily["Close"].values
             d_lows = df_daily["Low"].values
             price_now = clean_num(d_closes[-1])
@@ -212,21 +188,11 @@ def analyze_stock(item):
             reward = tp - price_now
             rr = f"{clean_num(reward / risk if risk > 0 else 0):.2f}"
 
-            ref_idx = 120 if len(d_closes) > 120 else len(d_closes) - 1
-            momentum_6m = clean_num(
-                (
-                    (price_now - d_closes[-ref_idx])
-                    / (d_closes[-ref_idx] or 1)
-                )
-                * 100
-            )
-
             return {
                 "code": str(item["code"]),
                 "name": str(item["name"]),
                 "price": price_now,
                 "confluenceScore": 6,
-                "confluenceDetails": "月線主升浪 · 周線零軸上多頭 · SMC價值缺口 · EMA多頭排列",
                 "monthly1to1TP": tp,
                 "fib0618": fib0618,
                 "dailyPattern": "日線上升三角蓄勢",
@@ -249,9 +215,7 @@ for item in WATCHLIST:
     if res:
         results.append(res)
 
-results.sort(key=lambda x: x["price"], reverse=True)
-
 with open("data.json", "w", encoding="utf-8") as f:
     json.dump(results, f, ensure_ascii=False, indent=2)
 
-print(f"成功完成全時框數據打包，共輸出 {len(results)} 檔！")
+print(f"成功輸出 {len(results)} 檔完整全週期數據！")
