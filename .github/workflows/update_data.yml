@@ -1,0 +1,38 @@
+name: 每日台股 SMC 數據自動更新
+
+on:
+  schedule:
+    # UTC 時間 08:30 等於 台灣時間 16:30 (週一至週五)
+    - cron: '30 8 * * 1-5'
+  workflow_dispatch: # 支援在 GitHub 網頁上手動按「Run workflow」立即測試更新
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 允許 Actions 提交程式碼到 repo
+
+    steps:
+      - name: 檢出儲存庫代碼
+        uses: actions/checkout@v4
+
+      - name: 設定 Python 環境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 安裝相依套件
+        run: |
+          pip install yfinance pandas numpy
+
+      - name: 執行 SMC 計算腳本
+        run: |
+          python update_smc.py
+
+      - name: 提交並推送最新數據
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git commit -m "Auto: 更新盤後 SMC 選股數據 $(date +'%Y-%m-%d')" || exit 0
+          git push
