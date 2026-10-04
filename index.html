@@ -1,252 +1,43 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台股 SMC × 形態學 × MACD 量化選股終端</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body { background-color: #080c14; color: #cbd5e1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: #0b1120; }
-    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
-    .bg-panel { background: rgba(13, 20, 36, 0.85); backdrop-filter: blur(8px); border: 1px solid #1e293b; }
-  </style>
-</head>
-<body class="min-h-screen flex flex-col p-4 md:p-6 space-y-5">
+async function loadSMCData() {
+  const icon = document.getElementById("refresh-icon");
+  if (icon) icon.classList.add("animate-spin");
+  document.getElementById("scan-status").innerText = "正在讀取最新數據...";
 
-  <header class="bg-panel rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 border border-slate-800">
-    <div class="flex items-center space-x-3">
-      <div class="p-2.5 bg-cyan-950/80 border border-cyan-500/40 rounded-lg text-cyan-400">
-        <i data-lucide="activity" class="w-5 h-5"></i>
-      </div>
-      <div>
-        <h1 class="text-base font-bold text-slate-100 flex items-center gap-2">
-          台股 SMC × 形態學 × MACD 多維量化選股終端
-          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">周線金叉 · 底背離 · 精確入場點</span>
-        </h1>
-        <p class="text-xs text-slate-400">整合上升三角 / 雙底形態 · 日線 MACD 背離驗證 · 周線 HTF 動能金叉</p>
-      </div>
-    </div>
-    <button onclick="loadSMCData()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-900 font-semibold text-xs flex items-center gap-1.5 transition">
-      <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-icon"></i> 重新載入最新分析數據
-    </button>
-  </header>
-
-  <main class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+  try {
+    const res = await fetch(`data.json?_t=${Date.now()}`);
+    if (!res.ok) {
+      throw new Error(`無法取得檔案 (HTTP ${res.status})，請確認 GitHub Actions 是否已運行成功並生成 data.json`);
+    }
     
-    <!-- 左側清單表格 (7 欄) -->
-    <section class="xl:col-span-7 space-y-4">
-      <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden">
-        <div class="p-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-900/60">
-          <div class="text-xs font-semibold text-slate-300 flex items-center gap-2">
-            <i data-lucide="list-filter" class="w-4 h-4 text-cyan-400"></i> 強勢形態與 MACD 掃描池
-            <span id="scan-status" class="text-[11px] text-slate-400 font-normal">載入中...</span>
-          </div>
-          <div class="text-[11px] text-slate-400 font-mono" id="result-count">共 0 檔</div>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs">
-            <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800 font-mono">
-              <tr>
-                <th class="py-2.5 px-3">代號 / 標的</th>
-                <th class="py-2.5 px-2">現價</th>
-                <th class="py-2.5 px-2">半年漲幅</th>
-                <th class="py-2.5 px-2">識別形態學</th>
-                <th class="py-2.5 px-2">MACD 狀態</th>
-                <th class="py-2.5 px-2">建議入場區間</th>
-                <th class="py-2.5 px-2 text-right">風盈比</th>
-              </tr>
-            </thead>
-            <tbody id="stock-table-body" class="divide-y divide-slate-800/60 font-mono">
-              <tr>
-                <td colspan="7" class="py-12 text-center text-slate-400 text-xs">正在載入分析數據...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- 右側圖表與深度交易計畫 (5 欄) -->
-    <section class="xl:col-span-5 space-y-4">
-      <div class="bg-panel rounded-xl p-4 border border-slate-800 space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div>
-            <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-              <span class="text-cyan-400 font-mono text-base" id="chart-symbol">--</span>
-              <span class="text-xs font-normal px-2 py-0.5 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-500/30" id="chart-pattern-badge">--</span>
-            </h3>
-            <p class="text-xs text-slate-400 mt-0.5">近 30 個交易日真實日線走勢</p>
-          </div>
-          <div class="text-right">
-            <div class="text-base font-bold font-mono text-slate-100" id="chart-price">NT$ --</div>
-            <div class="text-[11px] font-mono text-emerald-400" id="chart-return-tag">--</div>
-          </div>
-        </div>
-
-        <div class="relative h-60 w-full">
-          <canvas id="realtimeChart"></canvas>
-        </div>
-
-        <!-- 點位與形態學解讀卡片 -->
-        <div class="p-3.5 bg-slate-900/70 rounded-lg border border-slate-800 space-y-2 text-xs">
-          <div class="text-slate-200 font-semibold flex items-center gap-1.5">
-            <i data-lucide="target" class="w-3.5 h-3.5 text-cyan-400"></i> SMC × 形態 × MACD 交易計畫
-          </div>
-          <div class="text-slate-400 space-y-1.5 font-sans leading-relaxed" id="plan-details">
-            <p>• 點選左側表格中的任一股票即可載入形態細節與入場點位分析。</p>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <script>
-    let chartInstance = null;
-    let analyzedResults = [];
-
-    async function loadSMCData() {
-      const icon = document.getElementById("refresh-icon");
-      if (icon) icon.classList.add("animate-spin");
-      document.getElementById("scan-status").innerText = "正在讀取最新數據...";
-
-      try {
-        const res = await fetch(`data.json?_t=${Date.now()}`);
-        if (!res.ok) throw new Error("尚未生成 data.json");
-        const data = await res.json();
-        analyzedResults = data;
-        renderResults();
-        if (analyzedResults.length > 0) {
-          selectStock(analyzedResults[0]);
-        }
-        document.getElementById("scan-status").innerText = "數據已是最新狀態";
-      } catch (err) {
-        document.getElementById("scan-status").innerText = "讀取失敗，請確認 GitHub Actions 是否執行成功";
-      } finally {
-        if (icon) icon.classList.remove("animate-spin");
-      }
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (parseErr) {
+      throw new Error("data.json 格式損毀或含有不合規字元，請重新執行 Actions！");
     }
 
-    function renderResults() {
-      const tbody = document.getElementById("stock-table-body");
-      tbody.innerHTML = "";
-      document.getElementById("result-count").innerText = `共 ${analyzedResults.length} 檔`;
-
-      analyzedResults.forEach((stock) => {
-        const tr = document.createElement("tr");
-        tr.className = "cursor-pointer transition hover:bg-slate-800/60";
-        tr.onclick = () => selectStock(stock);
-
-        tr.innerHTML = `
-          <td class="py-2.5 px-3">
-            <span class="font-bold text-slate-100">${stock.code}</span>
-            <span class="text-slate-400 font-sans ml-1">${stock.name}</span>
-          </td>
-          <td class="py-2.5 px-2 font-semibold text-slate-200">NT$ ${stock.price}</td>
-          <td class="py-2.5 px-2">
-            <span class="font-bold ${stock.momentum_6m >= 0 ? 'text-rose-400' : 'text-emerald-400'}">
-              ${stock.momentum_6m >= 0 ? '+' : ''}${stock.momentum_6m}%
-            </span>
-          </td>
-          <td class="py-2.5 px-2">
-            <span class="px-2 py-0.5 rounded text-[10px] font-sans ${stock.pattern.includes('三角') ? 'bg-amber-950/80 text-amber-300 border border-amber-500/40' : (stock.pattern.includes('雙底') ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-slate-300')}">
-              ${stock.pattern}
-            </span>
-          </td>
-          <td class="py-2.5 px-2">
-            <span class="px-1.5 py-0.5 rounded text-[10px] font-sans ${stock.weeklyMacd.includes('金叉') ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/30' : 'bg-slate-800 text-slate-300'}">
-              ${stock.weeklyMacd}
-            </span>
-          </td>
-          <td class="py-2.5 px-2 text-cyan-400 font-medium">NT$ ${stock.entryZone}</td>
-          <td class="py-2.5 px-2 text-right">
-            <span class="font-bold ${parseFloat(stock.rr) >= 2.0 ? 'text-emerald-400' : 'text-slate-400'}">
-              1 : ${stock.rr}
-            </span>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-      lucide.createIcons();
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error("data.json 內容為空，代表未能成功抓取到任何股票行情。");
     }
 
-    function selectStock(stock) {
-      document.getElementById("chart-symbol").innerText = `${stock.code} ${stock.name}`;
-      document.getElementById("chart-pattern-badge").innerText = stock.pattern;
-      document.getElementById("chart-price").innerText = `NT$ ${stock.price}`;
-      document.getElementById("chart-return-tag").innerText = `近半年累積: +${stock.momentum_6m}%`;
-
-      document.getElementById("plan-details").innerHTML = `
-        <p>• <b>識別形態學</b>：<span class="text-amber-400 font-medium">${stock.pattern}</span>（${stock.patternDesc}）。</p>
-        <p>• <b>MACD 動能判斷</b>：${stock.macdDivergence}，<span class="text-cyan-400 font-medium">${stock.weeklyMacd}</span>。</p>
-        <p>• <b>建議進場點 (Suggested Entry)</b>：回踩 <b class="text-cyan-400">NT$ ${stock.entryZone}</b> 建倉（日線 FVG 與形態頸線支撐位）。</p>
-        <p>• <b>防守止損位 (SL)</b>：<b>NT$ ${stock.sl}</b>（波段起漲結構低點）。</p>
-        <p>• <b>目標止盈位 (TP)</b>：<b>NT$ ${stock.tp}</b>（上看前高流動性池 BSL），預期風盈比達 <b class="text-emerald-400">1 : ${stock.rr}</b>。</p>
-      `;
-
-      renderChart(stock);
+    analyzedResults = data;
+    renderResults();
+    if (analyzedResults.length > 0) {
+      selectStock(analyzedResults[0]);
     }
-
-    function renderChart(stock) {
-      const ctx = document.getElementById("realtimeChart").getContext("2d");
-      if (chartInstance) chartInstance.destroy();
-
-      const labels = stock.history.map(k => k.date);
-      const closes = stock.history.map(k => k.close);
-
-      chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: `${stock.code} 收盤走勢`,
-            data: closes,
-            borderColor: '#06b6d4',
-            backgroundColor: 'rgba(6, 182, 212, 0.08)',
-            borderWidth: 2,
-            tension: 0.15,
-            pointRadius: 2,
-            pointHoverRadius: 5,
-            fill: true
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: (c) => `日收盤: NT$ ${c.parsed.y}`
-              }
-            }
-          },
-          scales: {
-            x: {
-              grid: { color: 'rgba(51, 65, 85, 0.2)' },
-              ticks: { color: '#64748b', font: { family: 'monospace', size: 10 } }
-            },
-            y: {
-              grid: { color: 'rgba(51, 65, 85, 0.2)' },
-              ticks: {
-                color: '#64748b',
-                font: { family: 'monospace', size: 10 },
-                callback: (v) => `NT$ ${v}`
-              }
-            }
-          }
-        }
-      });
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      lucide.createIcons();
-      loadSMCData();
-    });
-  </script>
-</body>
-</html>
+    document.getElementById("scan-status").innerText = "數據已是最新狀態";
+  } catch (err) {
+    console.error(err);
+    document.getElementById("scan-status").innerText = "讀取失敗";
+    document.getElementById("stock-table-body").innerHTML = `
+      <tr>
+        <td colspan="7" class="py-8 text-center text-rose-400 text-xs font-sans">
+          ⚠️️ <b>${err.message}</b>
+        </td>
+      </tr>
+    `;
+  } finally {
+    if (icon) icon.classList.remove("animate-spin");
+  }
+}
