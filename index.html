@@ -27,9 +27,9 @@
       <div>
         <h1 class="text-base font-bold text-slate-100 flex items-center gap-2">
           台股全週期 SMC × 自研原生效能 K 棒終端
-          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">原生 Canvas 渲染 · 零依賴自由拖曳縮放</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">自研 Canvas 渲染 · 自由拖曳縮放 · 十字線價位提示</span>
         </h1>
-        <p class="text-xs text-slate-400">按住滑鼠左鍵左右拖曳平移 · 滑鼠滾輪縮放 · 全時框 1m 到月線無限制 · 聯動 MACD 與 EMA</p>
+        <p class="text-xs text-slate-400">滑鼠拖曳平移歷史 · 滾輪縮放 · 懸浮即時顯示日期、開高低收與價位標籤 · 聯動 MACD 與 EMA</p>
       </div>
     </div>
     <button onclick="loadSMCData()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-900 font-semibold text-xs flex items-center gap-1.5 transition">
@@ -83,7 +83,7 @@
       </div>
     </section>
 
-    <!-- 右側圖表區：自研原生繪圖畫布 -->
+    <!-- 右側圖表區 -->
     <section class="xl:col-span-7 flex flex-col space-y-3">
       
       <!-- 頂部控制列 -->
@@ -92,12 +92,12 @@
           <div class="flex items-center gap-2">
             <span class="text-base font-bold text-cyan-400 font-mono" id="chart-symbol">--</span>
             <span class="text-xs px-2 py-0.5 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-500/30" id="chart-pattern-badge">--</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30" id="chart-confluence-badge">共振: --</span>
           </div>
           <div class="flex items-center gap-2 mt-1 text-[11px] font-mono">
             <span class="text-amber-400">● EMA20</span>
             <span class="text-indigo-400">● EMA60</span>
             <span class="text-rose-400">● EMA100</span>
-            <span class="text-slate-400 ml-2" id="cursor-info"></span>
           </div>
         </div>
 
@@ -113,10 +113,23 @@
         </div>
       </div>
 
+      <!-- K 棒即時懸浮資訊抬頭 (HUD) -->
+      <div class="bg-slate-950/80 rounded-lg px-3 py-1.5 border border-slate-800/80 flex flex-wrap items-center justify-between text-[11px] font-mono">
+        <div class="flex items-center gap-3 text-slate-300" id="kline-hud">
+          <span>時間: <b class="text-slate-100" id="hud-time">--</b></span>
+          <span>開: <b class="text-slate-100" id="hud-open">--</b></span>
+          <span>高: <b class="text-slate-100" id="hud-high">--</b></span>
+          <span>低: <b class="text-slate-100" id="hud-low">--</b></span>
+          <span>收: <b class="text-slate-100" id="hud-close">--</b></span>
+          <span>漲跌: <b id="hud-change">--</b></span>
+        </div>
+        <div class="text-[10px] text-slate-500">按住滑鼠拖曳平移 · 滾輪縮放</div>
+      </div>
+
       <!-- 核心畫布容器 -->
       <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden p-2 flex flex-col space-y-1" id="chart-viewport">
         <!-- 主圖 K 棒 Canvas -->
-        <canvas id="candleCanvas" class="w-full" height="420"></canvas>
+        <canvas id="candleCanvas" class="w-full" height="400"></canvas>
         <!-- 副圖 MACD Canvas -->
         <canvas id="macdCanvas" class="w-full" height="150"></canvas>
       </div>
@@ -129,10 +142,10 @@
     let currentTF = '1d';
     let analyzedResults = [];
 
-    // 自研互動看盤視窗參數
-    let barWidth = 10;       // 單根 K 棒寬度 (支援滾輪放大/縮小)
-    let barSpacing = 4;      // K 棒間距
-    let offsetX = 0;         // 平移偏移量 (支援拖曳平移歷史)
+    // 互動視窗參數
+    let barWidth = 11;
+    let barSpacing = 4;
+    let offsetX = 0;
     let isDragging = false;
     let dragStartX = 0;
     let dragStartOffset = 0;
@@ -143,7 +156,6 @@
     const cCtx = cCanvas.getContext("2d");
     const mCtx = mCanvas.getContext("2d");
 
-    // 事件監聽：滑鼠拖曳平移、滾輪縮放、十字線跟隨
     function setupInteractions() {
       const container = document.getElementById("chart-viewport");
 
@@ -180,7 +192,7 @@
       container.addEventListener("wheel", (e) => {
         e.preventDefault();
         const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
-        const newBarWidth = Math.max(3, Math.min(45, barWidth * zoomFactor));
+        const newBarWidth = Math.max(3, Math.min(50, barWidth * zoomFactor));
         barSpacing = Math.max(1, newBarWidth * 0.35);
         barWidth = newBarWidth;
         requestRender();
@@ -208,7 +220,6 @@
       renderMACDChart(bars);
     }
 
-    // 核心繪製：K 棒 + EMA + 十字線 + 時間與價格軸
     function renderCandleChart(bars) {
       const w = cCanvas.width;
       const h = cCanvas.height;
@@ -216,25 +227,22 @@
 
       if (bars.length === 0) return;
 
-      const rightPadding = 65;
+      const rightPadding = 75;
       const bottomPadding = 24;
       const chartW = w - rightPadding;
       const chartH = h - bottomPadding;
 
       const totalItemW = barWidth + barSpacing;
-      // 預設將最新的一根置於最右側
       const maxOffset = Math.max(0, bars.length * totalItemW - chartW);
       if (offsetX < 0) offsetX = 0;
       if (offsetX > maxOffset + chartW * 0.5) offsetX = maxOffset + chartW * 0.5;
 
-      // 計算畫面中可見的 K 棒區間
       const startIdx = Math.max(0, Math.floor(offsetX / totalItemW));
       const endIdx = Math.min(bars.length, Math.ceil((offsetX + chartW) / totalItemW) + 1);
 
       const visibleBars = bars.slice(startIdx, endIdx);
       if (visibleBars.length === 0) return;
 
-      // 計算可見範圍最高與最低價
       let minP = Math.min(...visibleBars.map(b => b.low));
       let maxP = Math.max(...visibleBars.map(b => b.high));
       visibleBars.forEach(b => {
@@ -249,8 +257,11 @@
       function getY(p) {
         return chartH - ((p - minP) / (maxP - minP)) * chartH;
       }
+      function getPriceAtY(y) {
+        return maxP - (y / chartH) * (maxP - minP);
+      }
 
-      // 繪製格線與右側價格刻度
+      // 背景網格與右側價格軸刻度
       cCtx.strokeStyle = "rgba(30, 41, 59, 0.4)";
       cCtx.lineWidth = 1;
       cCtx.fillStyle = "#64748b";
@@ -267,7 +278,7 @@
         cCtx.fillText(`NT$ ${p.toFixed(1)}`, chartW + 6, y + 3);
       }
 
-      // 繪製 EMA 均線 (20, 60, 100)
+      // 繪製 EMA 均線
       function drawEMA(key, color) {
         cCtx.strokeStyle = color;
         cCtx.lineWidth = 1.5;
@@ -287,7 +298,7 @@
       drawEMA("ema60", "#818cf8");
       drawEMA("ema100", "#f43f5e");
 
-      // 繪製 K 棒與底部時間軸
+      // 繪製 K 棒與時間軸
       cCtx.textAlign = "center";
       let lastDrawnTimeX = -100;
 
@@ -307,7 +318,7 @@
         cCtx.lineTo(cx, getY(b.low));
         cCtx.stroke();
 
-        // 實體蠟燭
+        // 實體
         const oY = getY(b.open);
         const cY = getY(b.close);
         const topY = Math.min(oY, cY);
@@ -315,8 +326,8 @@
         cCtx.fillStyle = color;
         cCtx.fillRect(x, topY, barWidth, bodyH);
 
-        // 時間座標標籤 (自適應避免重疊)
-        if (cx - lastDrawnTimeX > 75) {
+        // 時間座標刻度
+        if (cx - lastDrawnTimeX > 80) {
           cCtx.fillStyle = "#64748b";
           cCtx.fillText(b.time, cx, h - 6);
           cCtx.strokeStyle = "rgba(30, 41, 59, 0.3)";
@@ -328,10 +339,24 @@
         }
       }
 
-      // 十字光標與 Hover 資訊
-      if (mousePos.inChart && mousePos.x >= 0 && mousePos.x <= chartW) {
-        cCtx.strokeStyle = "rgba(148, 163, 184, 0.5)";
-        cCtx.setLineDash([4, 4]);
+      // 最新價格右側常駐標籤
+      const latestBar = bars[bars.length - 1];
+      if (latestBar) {
+        const latestY = getY(latestBar.close);
+        cCtx.fillStyle = latestBar.close >= latestBar.open ? "#ef4444" : "#22c55e";
+        cCtx.fillRect(chartW, latestY - 8, rightPadding, 16);
+        cCtx.fillStyle = "#ffffff";
+        cCtx.font = "bold 10px monospace";
+        cCtx.textAlign = "left";
+        cCtx.fillText(`NT$ ${latestBar.close.toFixed(1)}`, chartW + 4, latestY + 4);
+      }
+
+      // 十字光標、價格氣泡、時間氣泡與 HUD 提示
+      if (mousePos.inChart && mousePos.x >= 0 && mousePos.x <= chartW && mousePos.y >= 0 && mousePos.y <= chartH) {
+        // 1. 十字線
+        cCtx.strokeStyle = "rgba(148, 163, 184, 0.6)";
+        cCtx.lineWidth = 1;
+        cCtx.setLineDash([3, 3]);
         cCtx.beginPath();
         cCtx.moveTo(mousePos.x, 0);
         cCtx.lineTo(mousePos.x, chartH);
@@ -340,19 +365,45 @@
         cCtx.stroke();
         cCtx.setLineDash([]);
 
-        // 計算游標所在的 K 棒
+        // 2. 右側價格氣泡
+        const hoveredPrice = getPriceAtY(mousePos.y);
+        cCtx.fillStyle = "#0284c7";
+        cCtx.fillRect(chartW, mousePos.y - 9, rightPadding, 18);
+        cCtx.fillStyle = "#ffffff";
+        cCtx.font = "bold 10px monospace";
+        cCtx.textAlign = "left";
+        cCtx.fillText(`NT$ ${hoveredPrice.toFixed(1)}`, chartW + 4, mousePos.y + 4);
+
+        // 3. 獲取游標選中的 K 棒
         const hoverIdx = Math.floor((mousePos.x + offsetX) / totalItemW);
         if (hoverIdx >= 0 && hoverIdx < bars.length) {
           const hb = bars[hoverIdx];
-          document.getElementById("cursor-info").innerText = 
-            `[${hb.time}] 開:${hb.open} 高:${hb.high} 低:${hb.low} 收:${hb.close}`;
+
+          // 底部時間氣泡
+          cCtx.fillStyle = "#0284c7";
+          cCtx.fillRect(mousePos.x - 45, chartH + 2, 90, 18);
+          cCtx.fillStyle = "#ffffff";
+          cCtx.textAlign = "center";
+          cCtx.fillText(hb.time, mousePos.x, chartH + 15);
+
+          // 更新頂部 HUD 資訊
+          const chg = hb.close - hb.open;
+          const chgPct = ((chg / (hb.open || 1)) * 100).toFixed(2);
+          const isUp = chg >= 0;
+
+          document.getElementById("hud-time").innerText = hb.time;
+          document.getElementById("hud-open").innerText = hb.open.toFixed(1);
+          document.getElementById("hud-high").innerText = hb.high.toFixed(1);
+          document.getElementById("hud-low").innerText = hb.low.toFixed(1);
+          document.getElementById("hud-close").innerText = hb.close.toFixed(1);
+          
+          const chgEl = document.getElementById("hud-change");
+          chgEl.innerText = `${isUp ? '+' : ''}${chg.toFixed(1)} (${isUp ? '+' : ''}${chgPct}%)`;
+          chgEl.className = isUp ? "text-rose-400 font-bold" : "text-emerald-400 font-bold";
         }
-      } else {
-        document.getElementById("cursor-info").innerText = "";
       }
     }
 
-    // 副圖繪製：MACD 能量柱 + 快慢線 (與主圖絕對同步)
     function renderMACDChart(bars) {
       const w = mCanvas.width;
       const h = mCanvas.height;
@@ -360,7 +411,7 @@
 
       if (bars.length === 0) return;
 
-      const rightPadding = 65;
+      const rightPadding = 75;
       const chartW = w - rightPadding;
       const chartH = h;
       const totalItemW = barWidth + barSpacing;
@@ -380,7 +431,6 @@
         return zeroY - (val / maxAbs) * (chartH / 2);
       }
 
-      // 零軸
       mCtx.strokeStyle = "rgba(71, 85, 105, 0.4)";
       mCtx.lineWidth = 1;
       mCtx.beginPath();
@@ -388,7 +438,6 @@
       mCtx.lineTo(chartW, zeroY);
       mCtx.stroke();
 
-      // 右側數值刻度
       mCtx.fillStyle = "#64748b";
       mCtx.font = "9px monospace";
       mCtx.textAlign = "left";
@@ -396,7 +445,7 @@
       mCtx.fillText("0.0", chartW + 6, zeroY + 3);
       mCtx.fillText((-maxAbs).toFixed(1), chartW + 6, chartH - 4);
 
-      // MACD 能量柱
+      // MACD 柱狀體
       for (let i = startIdx; i < endIdx; i++) {
         const b = bars[i];
         const x = i * totalItemW - offsetX;
@@ -406,7 +455,6 @@
         mCtx.fillRect(x, Math.min(zeroY, y), barWidth, Math.abs(y - zeroY));
       }
 
-      // DIF 線 (青色) 與 DEA 線 (橘色)
       function drawMACDLine(key, color) {
         mCtx.strokeStyle = color;
         mCtx.lineWidth = 1.3;
@@ -466,9 +514,11 @@
         tr.onclick = () => selectStock(stock);
 
         const score = stock.confluenceScore || 0;
-        let scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">⚡ ${score} / 6</span>`;
+        let scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-400">${score} / 6</span>`;
         if (score >= 5) {
-          scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-950/80 text-rose-300 border border-rose-500/40">🔥 ${score} / 6</span>`;
+          scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-950/80 text-rose-300 border border-rose-500/40">🔥 ${score} / 6 (極高)</span>`;
+        } else if (score >= 4) {
+          scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">⚡ ${score} / 6 (高)</span>`;
         }
 
         const monthlyTP = stock.monthly1to1TP ? `NT$ ${stock.monthly1to1TP}` : (stock.tp ? `NT$ ${stock.tp}` : "待更新");
@@ -483,7 +533,7 @@
           <td class="py-2.5 px-2 font-bold text-indigo-300">${monthlyTP}</td>
           <td class="py-2.5 px-2 text-center">
             <span class="px-2 py-0.5 rounded text-[11px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30">
-              ${stock.winRate || '56.5%'}
+              ${stock.winRate}
             </span>
           </td>
           <td class="py-2.5 px-2 text-right font-bold text-emerald-400">1 : ${stock.rr || '2.0'}</td>
@@ -502,17 +552,19 @@
 
       document.getElementById("chart-symbol").innerText = `${stock.code} ${stock.name}`;
       document.getElementById("chart-pattern-badge").innerText = stock.dailyPattern || "突破蓄勢";
-      document.getElementById("backtest-tag").innerText = `歷史勝率: ${stock.winRate || '56.5%'} (PF: ${stock.profitFactor || '1.92'})`;
+      document.getElementById("chart-confluence-badge").innerText = `共振: ${stock.confluenceScore}/6 (${stock.confluenceDetails || '整理'})`;
+      document.getElementById("backtest-tag").innerText = `歷史勝率: ${stock.winRate} (PF: ${stock.profitFactor})`;
 
       document.getElementById("plan-details").innerHTML = `
+        <p>• <b>歷史回測表現</b>：三屏障法過去 1 年策略勝率 <b class="text-amber-400">${stock.winRate}</b>，獲利因子 (Profit Factor) 為 <b class="text-cyan-400">${stock.profitFactor}</b>。</p>
         <p>• <b>月線 1:1 對稱延伸目標</b>：<b class="text-indigo-300">NT$ ${stock.monthly1to1TP || stock.tp}</b>${stock.fib0618 ? `（第一波減倉位 0.618 位於 NT$ ${stock.fib0618}）` : ''}。</p>
         <p>• <b>建議進場 (Entry)</b>：回測 <b class="text-cyan-400">NT$ ${stock.entryZone || stock.price}</b> 掛單分批建倉。</p>
         <p>• <b>防守止損 (SL)</b>：<b>NT$ ${stock.sl}</b>，預期大波段風盈比達 <b class="text-emerald-400">1 : ${stock.rr || '2.0'}</b>。</p>
       `;
 
-      // 重置偏移量，自動對齊至最新資料
+      // 自動對齊到最新一根 K 棒
       const bars = getActiveBars();
-      const chartW = cCanvas.width - 65;
+      const chartW = cCanvas.width - 75;
       offsetX = Math.max(0, bars.length * (barWidth + barSpacing) - chartW);
 
       requestRender();
@@ -529,7 +581,7 @@
       });
 
       const bars = getActiveBars();
-      const chartW = cCanvas.width - 65;
+      const chartW = cCanvas.width - 75;
       offsetX = Math.max(0, bars.length * (barWidth + barSpacing) - chartW);
 
       requestRender();
