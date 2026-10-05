@@ -3,68 +3,74 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台股全時框 SMC × 自研高流暢互動 K 線終端</title>
+  <title>Crypto SMC 多週期合約量化終端 (4H / 1H / 15m / 5m)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    body { background-color: #080c14; color: #cbd5e1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; }
+    body { background-color: #050811; color: #cbd5e1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: #0b1120; }
+    ::-webkit-scrollbar-track { background: #080c18; }
     ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
-    .bg-panel { background: rgba(13, 20, 36, 0.85); backdrop-filter: blur(8px); border: 1px solid #1e293b; }
-    .stock-row.selected { background-color: rgba(6, 182, 212, 0.18) !important; border-left: 3px solid #06b6d4; }
-    .tf-btn.active { background-color: #06b6d4 !important; color: #080c14 !important; font-weight: bold; }
+    .bg-panel { background: rgba(10, 15, 29, 0.9); backdrop-filter: blur(8px); border: 1px solid #1e293b; }
+    .stock-row.selected { background-color: rgba(14, 165, 233, 0.18) !important; border-left: 3px solid #0284c7; }
+    .tf-btn.active { background-color: #0284c7 !important; color: #ffffff !important; font-weight: bold; }
     canvas { display: block; cursor: crosshair; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col p-4 md:p-6 space-y-4">
 
+  <!-- 頂部導航列 -->
   <header class="bg-panel rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 border border-slate-800">
     <div class="flex items-center space-x-3">
-      <div class="p-2.5 bg-cyan-950/80 border border-cyan-500/40 rounded-lg text-cyan-400">
-        <i data-lucide="candlestick-chart" class="w-5 h-5"></i>
+      <div class="p-2.5 bg-sky-950/80 border border-sky-500/40 rounded-lg text-sky-400">
+        <i data-lucide="zap" class="w-5 h-5"></i>
       </div>
       <div>
         <h1 class="text-base font-bold text-slate-100 flex items-center gap-2">
-          台股全週期 SMC × 自研原生效能 K 棒終端
-          <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">嚴格 SMC 訂單塊 (OB) 止損防守</span>
+          加密貨幣 SMC 四階嵌套量化終端
+          <span class="text-xs px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/30">4H 趨勢 · 1H 結構 · 15m/5m 進場 · 4小時更新</span>
         </h1>
-        <p class="text-xs text-slate-400">機構訂單塊底端防守 · 獨立策略勝率 · 滑鼠拖曳平移與滾輪縮放 · 懸浮十字線即時報價</p>
+        <p class="text-xs text-slate-400">精選 10 檔主流與活躍公鏈合約 · 4H 機構 OB 止損 · 滾輪縮放與滑鼠平移拖曳</p>
       </div>
     </div>
-    <button onclick="loadSMCData()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-900 font-semibold text-xs flex items-center gap-1.5 transition">
-      <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-icon"></i> 重新載入最新數據
-    </button>
+    <div class="flex items-center gap-2">
+      <a href="index.html" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center gap-1.5 transition">
+        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> 切換台股終端
+      </a>
+      <button onclick="loadCryptoData()" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs flex items-center gap-1.5 transition">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-icon"></i> 刷新最新合約數據
+      </button>
+    </div>
   </header>
 
   <main class="grid grid-cols-1 xl:grid-cols-12 gap-5 flex-1">
     
-    <!-- 左側股票表格 -->
+    <!-- 左側 10 檔幣種清單 -->
     <section class="xl:col-span-5 space-y-4 flex flex-col">
       <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden flex-1">
         <div class="p-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-900/60">
           <div class="text-xs font-semibold text-slate-300 flex items-center gap-2">
-            <i data-lucide="list-filter" class="w-4 h-4 text-cyan-400"></i> 三階共振強弱池
+            <i data-lucide="coins" class="w-4 h-4 text-sky-400"></i> SMC 合約信號池 (10 檔)
             <span id="scan-status" class="text-[11px] text-slate-400 font-normal">載入中...</span>
           </div>
-          <div class="text-[11px] text-slate-400 font-mono" id="result-count">共 0 檔</div>
+          <div class="text-[11px] text-slate-400 font-mono" id="result-count">共 10 檔</div>
         </div>
 
         <div class="overflow-x-auto max-h-[580px]">
           <table class="w-full text-left text-xs">
             <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800 font-mono sticky top-0 z-10">
               <tr>
-                <th class="py-2.5 px-3">代號 / 標的</th>
-                <th class="py-2.5 px-2 text-center text-amber-300">重合條件</th>
-                <th class="py-2.5 px-2">現價</th>
-                <th class="py-2.5 px-2 text-indigo-300">月線 1:1 止盈</th>
+                <th class="py-2.5 px-3">幣種</th>
+                <th class="py-2.5 px-2 text-center text-amber-300">SMC 共振</th>
+                <th class="py-2.5 px-2">合約現價</th>
+                <th class="py-2.5 px-2 text-indigo-300">4H 止盈 (TP)</th>
                 <th class="py-2.5 px-2 text-center text-emerald-400">歷史勝率</th>
                 <th class="py-2.5 px-2 text-right">風盈比</th>
               </tr>
             </thead>
-            <tbody id="stock-table-body" class="divide-y divide-slate-800/60 font-mono">
+            <tbody id="crypto-table-body" class="divide-y divide-slate-800/60 font-mono">
               <tr>
-                <td colspan="6" class="py-12 text-center text-slate-400 text-xs">正在載入數據...</td>
+                <td colspan="6" class="py-12 text-center text-slate-400 text-xs">正在載入合約量化數據...</td>
               </tr>
             </tbody>
           </table>
@@ -74,11 +80,11 @@
       <!-- 交易規劃卡片 -->
       <div class="p-4 bg-panel rounded-xl border border-slate-800 space-y-2 text-xs">
         <div class="text-slate-200 font-semibold flex items-center justify-between">
-          <span class="flex items-center gap-1.5"><i data-lucide="compass" class="w-3.5 h-3.5 text-cyan-400"></i> SMC 機構訂單塊 (OB) 交易規劃</span>
+          <span class="flex items-center gap-1.5"><i data-lucide="compass" class="w-3.5 h-3.5 text-sky-400"></i> SMC 多週期合約執行規劃</span>
           <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" id="backtest-tag">勝率: --</span>
         </div>
         <div class="text-slate-400 space-y-1.5 font-sans leading-relaxed" id="plan-details">
-          <p>• 點選上方表格任一股票載入即時分析。</p>
+          <p>• 點選上方表格任一幣種載入即時分析。</p>
         </div>
       </div>
     </section>
@@ -86,11 +92,11 @@
     <!-- 右側圖表區 -->
     <section class="xl:col-span-7 flex flex-col space-y-3">
       
-      <!-- 頂部控制列 -->
+      <!-- 頂部控制列：幣種資訊 + 4H/1H/15m/5m 週期按鈕 -->
       <div class="bg-panel rounded-xl p-3 border border-slate-800 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div class="flex items-center gap-2">
-            <span class="text-base font-bold text-cyan-400 font-mono" id="chart-symbol">--</span>
+            <span class="text-base font-bold text-sky-400 font-mono" id="chart-symbol">--</span>
             <span class="text-xs px-2 py-0.5 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-500/30" id="chart-pattern-badge">--</span>
             <span class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30" id="chart-confluence-badge">共振: --</span>
           </div>
@@ -101,19 +107,17 @@
           </div>
         </div>
 
-        <!-- 7 大時框按鈕 -->
+        <!-- 四階週期快捷按鈕 -->
         <div class="flex items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800 font-mono text-xs" id="tf-selector">
-          <button onclick="changeTF('1m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1m">1m</button>
-          <button onclick="changeTF('5m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="5m">5m</button>
-          <button onclick="changeTF('15m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="15m">15m</button>
-          <button onclick="changeTF('1h')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1h">1H</button>
-          <button onclick="changeTF('1d')" class="tf-btn active px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1d">日線</button>
-          <button onclick="changeTF('1w')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1w">周線</button>
-          <button onclick="changeTF('1M')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1M">月線</button>
+          <button onclick="changeTF('4h')" class="tf-btn active px-2.5 py-1 rounded text-slate-400 hover:text-white" data-tf="4h">4H (趨勢)</button>
+          <button onclick="changeTF('1h')" class="tf-btn px-2.5 py-1 rounded text-slate-400 hover:text-white" data-tf="1h">1H (結構)</button>
+          <button onclick="changeTF('15m')" class="tf-btn px-2.5 py-1 rounded text-slate-400 hover:text-white" data-tf="15m">15m (進場)</button>
+          <button onclick="changeTF('5m')" class="tf-btn px-2.5 py-1 rounded text-slate-400 hover:text-white" data-tf="5m">5m (微觀)</button>
+          <button onclick="changeTF('1d')" class="tf-btn px-2.5 py-1 rounded text-slate-400 hover:text-white" data-tf="1d">日線</button>
         </div>
       </div>
 
-      <!-- K 棒即時懸浮資訊抬頭 (HUD) -->
+      <!-- K 棒即時懸浮 HUD -->
       <div class="bg-slate-950/80 rounded-lg px-3 py-1.5 border border-slate-800/80 flex flex-wrap items-center justify-between text-[11px] font-mono">
         <div class="flex items-center gap-3 text-slate-300" id="kline-hud">
           <span>時間: <b class="text-slate-100" id="hud-time">--</b></span>
@@ -138,8 +142,8 @@
   </main>
 
   <script>
-    let currentStock = null;
-    let currentTF = '1d';
+    let currentCrypto = null;
+    let currentTF = '4h'; // 預設 4H 大級別
     let analyzedResults = [];
 
     let barWidth = 11;
@@ -209,8 +213,8 @@
     }
 
     function getActiveBars() {
-      if (!currentStock || !currentStock.timeframes) return [];
-      return currentStock.timeframes[currentTF] || [];
+      if (!currentCrypto || !currentCrypto.timeframes) return [];
+      return currentCrypto.timeframes[currentTF] || [];
     }
 
     function requestRender() {
@@ -226,7 +230,7 @@
 
       if (bars.length === 0) return;
 
-      const rightPadding = 75;
+      const rightPadding = 80;
       const bottomPadding = 24;
       const chartW = w - rightPadding;
       const chartH = h - bottomPadding;
@@ -260,7 +264,7 @@
         return maxP - (y / chartH) * (maxP - minP);
       }
 
-      // 背景網格與價格軸刻度
+      // 網格與價格刻度
       cCtx.strokeStyle = "rgba(30, 41, 59, 0.4)";
       cCtx.lineWidth = 1;
       cCtx.fillStyle = "#64748b";
@@ -274,10 +278,10 @@
         cCtx.moveTo(0, y);
         cCtx.lineTo(chartW, y);
         cCtx.stroke();
-        cCtx.fillText(`NT$ ${p.toFixed(1)}`, chartW + 6, y + 3);
+        cCtx.fillText(`$${p > 2 ? p.toFixed(2) : p.toFixed(4)}`, chartW + 6, y + 3);
       }
 
-      // 繪製 EMA 均線
+      // EMA 均線
       function drawEMA(key, color) {
         cCtx.strokeStyle = color;
         cCtx.lineWidth = 1.5;
@@ -297,7 +301,7 @@
       drawEMA("ema60", "#818cf8");
       drawEMA("ema100", "#f43f5e");
 
-      // 繪製 K 棒與時間軸
+      // K 棒
       cCtx.textAlign = "center";
       let lastDrawnTimeX = -100;
 
@@ -307,9 +311,9 @@
         const cx = x + barWidth / 2;
 
         const isUp = b.close >= b.open;
-        const color = isUp ? "#ef4444" : "#22c55e"; // 台股紅漲綠跌
+        // 加密貨幣圈習慣：綠漲紅跌 (國際標準) 或 依個人習慣
+        const color = isUp ? "#22c55e" : "#ef4444";
 
-        // 影線
         cCtx.strokeStyle = color;
         cCtx.lineWidth = 1.2;
         cCtx.beginPath();
@@ -317,7 +321,6 @@
         cCtx.lineTo(cx, getY(b.low));
         cCtx.stroke();
 
-        // 實體
         const oY = getY(b.open);
         const cY = getY(b.close);
         const topY = Math.min(oY, cY);
@@ -325,7 +328,6 @@
         cCtx.fillStyle = color;
         cCtx.fillRect(x, topY, barWidth, bodyH);
 
-        // 時間座標刻度
         if (cx - lastDrawnTimeX > 80) {
           cCtx.fillStyle = "#64748b";
           cCtx.fillText(b.time, cx, h - 6);
@@ -342,15 +344,15 @@
       const latestBar = bars[bars.length - 1];
       if (latestBar) {
         const latestY = getY(latestBar.close);
-        cCtx.fillStyle = latestBar.close >= latestBar.open ? "#ef4444" : "#22c55e";
+        cCtx.fillStyle = latestBar.close >= latestBar.open ? "#22c55e" : "#ef4444";
         cCtx.fillRect(chartW, latestY - 8, rightPadding, 16);
         cCtx.fillStyle = "#ffffff";
         cCtx.font = "bold 10px monospace";
         cCtx.textAlign = "left";
-        cCtx.fillText(`NT$ ${latestBar.close.toFixed(1)}`, chartW + 4, latestY + 4);
+        cCtx.fillText(`$${latestBar.close > 2 ? latestBar.close.toFixed(2) : latestBar.close.toFixed(4)}`, chartW + 4, latestY + 4);
       }
 
-      // 十字線與價位浮動標籤
+      // 十字線與浮動標籤
       if (mousePos.inChart && mousePos.x >= 0 && mousePos.x <= chartW && mousePos.y >= 0 && mousePos.y <= chartH) {
         cCtx.strokeStyle = "rgba(148, 163, 184, 0.6)";
         cCtx.lineWidth = 1;
@@ -363,16 +365,14 @@
         cCtx.stroke();
         cCtx.setLineDash([]);
 
-        // 右側價格氣泡
         const hoveredPrice = getPriceAtY(mousePos.y);
         cCtx.fillStyle = "#0284c7";
         cCtx.fillRect(chartW, mousePos.y - 9, rightPadding, 18);
         cCtx.fillStyle = "#ffffff";
         cCtx.font = "bold 10px monospace";
         cCtx.textAlign = "left";
-        cCtx.fillText(`NT$ ${hoveredPrice.toFixed(1)}`, chartW + 4, mousePos.y + 4);
+        cCtx.fillText(`$${hoveredPrice > 2 ? hoveredPrice.toFixed(2) : hoveredPrice.toFixed(4)}`, chartW + 4, mousePos.y + 4);
 
-        // 底部時間氣泡與 HUD
         const hoverIdx = Math.floor((mousePos.x + offsetX) / totalItemW);
         if (hoverIdx >= 0 && hoverIdx < bars.length) {
           const hb = bars[hoverIdx];
@@ -388,14 +388,14 @@
           const isUp = chg >= 0;
 
           document.getElementById("hud-time").innerText = hb.time;
-          document.getElementById("hud-open").innerText = hb.open.toFixed(1);
-          document.getElementById("hud-high").innerText = hb.high.toFixed(1);
-          document.getElementById("hud-low").innerText = hb.low.toFixed(1);
-          document.getElementById("hud-close").innerText = hb.close.toFixed(1);
+          document.getElementById("hud-open").innerText = hb.open;
+          document.getElementById("hud-high").innerText = hb.high;
+          document.getElementById("hud-low").innerText = hb.low;
+          document.getElementById("hud-close").innerText = hb.close;
           
           const chgEl = document.getElementById("hud-change");
-          chgEl.innerText = `${isUp ? '+' : ''}${chg.toFixed(1)} (${isUp ? '+' : ''}${chgPct}%)`;
-          chgEl.className = isUp ? "text-rose-400 font-bold" : "text-emerald-400 font-bold";
+          chgEl.innerText = `${isUp ? '+' : ''}${chg.toFixed(2)} (${isUp ? '+' : ''}${chgPct}%)`;
+          chgEl.className = isUp ? "text-emerald-400 font-bold" : "text-rose-400 font-bold";
         }
       }
     }
@@ -407,7 +407,7 @@
 
       if (bars.length === 0) return;
 
-      const rightPadding = 75;
+      const rightPadding = 80;
       const chartW = w - rightPadding;
       const chartH = h;
       const totalItemW = barWidth + barSpacing;
@@ -437,17 +437,16 @@
       mCtx.fillStyle = "#64748b";
       mCtx.font = "9px monospace";
       mCtx.textAlign = "left";
-      mCtx.fillText(maxAbs.toFixed(1), chartW + 6, 12);
+      mCtx.fillText(maxAbs.toFixed(2), chartW + 6, 12);
       mCtx.fillText("0.0", chartW + 6, zeroY + 3);
-      mCtx.fillText((-maxAbs).toFixed(1), chartW + 6, chartH - 4);
+      mCtx.fillText((-maxAbs).toFixed(2), chartW + 6, chartH - 4);
 
-      // MACD 柱狀體
       for (let i = startIdx; i < endIdx; i++) {
         const b = bars[i];
         const x = i * totalItemW - offsetX;
         const val = b.hist || 0;
         const y = getMY(val);
-        mCtx.fillStyle = val >= 0 ? "rgba(239, 68, 68, 0.75)" : "rgba(34, 197, 94, 0.75)";
+        mCtx.fillStyle = val >= 0 ? "rgba(34, 197, 94, 0.75)" : "rgba(239, 68, 68, 0.75)";
         mCtx.fillRect(x, Math.min(zeroY, y), barWidth, Math.abs(y - zeroY));
       }
 
@@ -470,126 +469,25 @@
       drawMACDLine("dea", "#f59e0b");
     }
 
-    async function loadSMCData() {
+    async function loadCryptoData() {
       const icon = document.getElementById("refresh-icon");
       if (icon) icon.classList.add("animate-spin");
-      document.getElementById("scan-status").innerText = "讀取最新數據...";
+      document.getElementById("scan-status").innerText = "讀取最新合約數據...";
 
       try {
-        const res = await fetch(`data.json?_t=${Date.now()}`);
+        const res = await fetch(`crypto_data.json?_t=${Date.now()}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) throw new Error("data.json 為空");
+        if (!Array.isArray(data) || data.length === 0) throw new Error("crypto_data.json 為空");
 
         analyzedResults = data;
         renderResults();
         if (analyzedResults.length > 0) {
-          selectStock(analyzedResults[0]);
+          selectCrypto(analyzedResults[0]);
         }
         document.getElementById("scan-status").innerText = "數據已是最新狀態";
       } catch (err) {
         console.error(err);
         document.getElementById("scan-status").innerText = "讀取失敗";
-        document.getElementById("stock-table-body").innerHTML = `
-          <tr><td colspan="6" class="py-8 text-center text-rose-400">⚠ ${err.message}</td></tr>
-        `;
-      } finally {
-        if (icon) icon.classList.remove("animate-spin");
-      }
-    }
-
-    function renderResults() {
-      const tbody = document.getElementById("stock-table-body");
-      tbody.innerHTML = "";
-      document.getElementById("result-count").innerText = `共 ${analyzedResults.length} 檔`;
-
-      analyzedResults.forEach((stock, idx) => {
-        const tr = document.createElement("tr");
-        tr.className = `cursor-pointer transition hover:bg-slate-800/60 stock-row ${idx === 0 ? 'selected' : ''}`;
-        tr.setAttribute("id", `row-${stock.code}`);
-        tr.onclick = () => selectStock(stock);
-
-        const score = stock.confluenceScore || 0;
-        let scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-400">${score} / 6</span>`;
-        if (score >= 5) {
-          scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-950/80 text-rose-300 border border-rose-500/40">🔥 ${score} / 6 (極高)</span>`;
-        } else if (score >= 4) {
-          scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">⚡ ${score} / 6 (高)</span>`;
-        } else if (score >= 3) {
-          scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-medium bg-cyan-950/80 text-cyan-300 border border-cyan-500/30">${score} / 6 (中)</span>`;
-        }
-
-        const monthlyTP = stock.monthly1to1TP ? `NT$ ${stock.monthly1to1TP}` : (stock.tp ? `NT$ ${stock.tp}` : "待更新");
-
-        tr.innerHTML = `
-          <td class="py-2.5 px-3">
-            <span class="font-bold text-slate-100">${stock.code}</span>
-            <span class="text-slate-400 ml-1">${stock.name}</span>
-          </td>
-          <td class="py-2.5 px-2 text-center">${scoreBadge}</td>
-          <td class="py-2.5 px-2 font-semibold text-slate-200">NT$ ${stock.price}</td>
-          <td class="py-2.5 px-2 font-bold text-indigo-300">${monthlyTP}</td>
-          <td class="py-2.5 px-2 text-center">
-            <span class="px-2 py-0.5 rounded text-[11px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30">
-              ${stock.winRate}
-            </span>
-          </td>
-          <td class="py-2.5 px-2 text-right font-bold text-emerald-400">1 : ${stock.rr || '2.0'}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-      lucide.createIcons();
-    }
-
-    function selectStock(stock) {
-      currentStock = stock;
-
-      document.querySelectorAll('.stock-row').forEach(r => r.classList.remove('selected'));
-      const activeRow = document.getElementById(`row-${stock.code}`);
-      if (activeRow) activeRow.classList.add('selected');
-
-      document.getElementById("chart-symbol").innerText = `${stock.code} ${stock.name}`;
-      document.getElementById("chart-pattern-badge").innerText = stock.dailyPattern || "突破蓄勢";
-      document.getElementById("chart-confluence-badge").innerText = `共振: ${stock.confluenceScore}/6 (${stock.confluenceDetails || '整理'})`;
-      document.getElementById("backtest-tag").innerText = `策略歷史勝率: ${stock.winRate} (PF: ${stock.profitFactor})`;
-
-      document.getElementById("plan-details").innerHTML = `
-        <p>• <b>SMC 機構訂單塊 (Bullish OB) 防守位</b>：最後放量推進前之陰線底端，防守止損 (SL) 設為 <b class="text-rose-400">NT$ ${stock.sl}</b>（${stock.obDate ? `OB 形成於 ${stock.obDate}` : '結構起漲支撐'}）。</p>
-        <p>• <b>月線 1:1 對稱延伸目標 (TP)</b>：大週期等幅目標價為 <b class="text-indigo-300">NT$ ${stock.monthly1to1TP || stock.tp}</b>${stock.fib0618 ? `（第一波減倉位 0.618 位於 NT$ ${stock.fib0618}）` : ''}。</p>
-        <p>• <b>建議進場區間 (Entry Zone)</b>：回踩 OB 與 FVG 共振區 <b class="text-cyan-400">NT$ ${stock.entryZone || stock.price}</b> 掛單分批建倉。</p>
-        <p>• <b>真實波段風盈比</b>：合理健康風盈比達 <b class="text-emerald-400">1 : ${stock.rr || '2.0'}</b>，避免過近止損遭受莊家掃蕩流動性。</p>
-      `;
-
-      const bars = getActiveBars();
-      const chartW = cCanvas.width - 75;
-      offsetX = Math.max(0, bars.length * (barWidth + barSpacing) - chartW);
-
-      requestRender();
-    }
-
-    function changeTF(tf) {
-      currentTF = tf;
-      document.querySelectorAll('#tf-selector .tf-btn').forEach(btn => {
-        if (btn.getAttribute('data-tf') === tf) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
-      });
-
-      const bars = getActiveBars();
-      const chartW = cCanvas.width - 75;
-      offsetX = Math.max(0, bars.length * (barWidth + barSpacing) - chartW);
-
-      requestRender();
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      lucide.createIcons();
-      setupInteractions();
-      resizeCanvases();
-      loadSMCData();
-    });
-  </script>
-</body>
-</html>
+        document.getElementById("crypto-table-body").innerHTML = `
+          <tr><td colspan="6" class="py-8 text-center text-rose-400">⚠ ${err.message}</td><
