@@ -2,24 +2,24 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>台股全時框 SMC × 自研高流暢互動 K 線終端</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    body { background-color: #080c14; color: #cbd5e1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; }
+    body { background-color: #080c14; color: #cbd5e1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; touch-action: manipulation; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: #0b1120; }
     ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
     .bg-panel { background: rgba(13, 20, 36, 0.85); backdrop-filter: blur(8px); border: 1px solid #1e293b; }
     .stock-row.selected { background-color: rgba(6, 182, 212, 0.18) !important; border-left: 3px solid #06b6d4; }
     .tf-btn.active { background-color: #06b6d4 !important; color: #080c14 !important; font-weight: bold; }
-    canvas { display: block; cursor: crosshair; }
+    canvas { display: block; touch-action: none; }
   </style>
 </head>
-<body class="min-h-screen flex flex-col p-4 md:p-6 space-y-4">
+<body class="min-h-screen flex flex-col p-3 md:p-6 space-y-4">
 
-  <header class="bg-panel rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 border border-slate-800">
+  <header class="bg-panel rounded-xl p-3 md:p-4 flex flex-wrap items-center justify-between gap-3 border border-slate-800">
     <div class="flex items-center space-x-3">
       <div class="p-2.5 bg-cyan-950/80 border border-cyan-500/40 rounded-lg text-cyan-400">
         <i data-lucide="candlestick-chart" class="w-5 h-5"></i>
@@ -27,20 +27,27 @@
       <div>
         <h1 class="text-base font-bold text-slate-100 flex items-center gap-2">
           台股全週期 SMC × 自研原生效能 K 棒終端
-          <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">嚴格 SMC 訂單塊 (OB) 止損防守</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">嚴格 OB 止損防守</span>
         </h1>
-        <p class="text-xs text-slate-400">機構訂單塊底端防守 · 獨立策略勝率 · 滑鼠拖曳平移與滾輪縮放 · 懸浮十字線即時報價</p>
+        <p class="text-xs text-slate-400">雙指捏合縮放 · 右側上下拖曳拉伸價格 · 單指滑動平移 · 點擊切換加密貨幣</p>
       </div>
     </div>
-    <button onclick="loadSMCData()" class="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-900 font-semibold text-xs flex items-center gap-1.5 transition">
-      <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-icon"></i> 重新載入最新數據
-    </button>
+    
+    <!-- 頂部切換與刷新按鈕 -->
+    <div class="flex items-center gap-2">
+      <a href="crypto.html" class="px-3 py-2 rounded-lg bg-sky-900/60 hover:bg-sky-800 text-sky-300 border border-sky-500/40 text-xs flex items-center gap-1.5 transition">
+        <i data-lucide="coins" class="w-3.5 h-3.5"></i> 切換加密貨幣終端
+      </a>
+      <button onclick="loadSMCData()" class="px-3.5 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-900 font-semibold text-xs flex items-center gap-1.5 transition">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-icon"></i> 刷新數據
+      </button>
+    </div>
   </header>
 
   <main class="grid grid-cols-1 xl:grid-cols-12 gap-5 flex-1">
     
     <!-- 左側股票表格 -->
-    <section class="xl:col-span-5 space-y-4 flex flex-col">
+    <section class="xl:col-span-5 space-y-4 flex flex-col order-2 xl:order-1">
       <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden flex-1">
         <div class="p-3.5 border-b border-slate-800 flex justify-between items-center bg-slate-900/60">
           <div class="text-xs font-semibold text-slate-300 flex items-center gap-2">
@@ -50,7 +57,7 @@
           <div class="text-[11px] text-slate-400 font-mono" id="result-count">共 0 檔</div>
         </div>
 
-        <div class="overflow-x-auto max-h-[580px]">
+        <div class="overflow-x-auto max-h-[520px]">
           <table class="w-full text-left text-xs">
             <thead class="bg-slate-950 text-slate-400 uppercase tracking-wider border-b border-slate-800 font-mono sticky top-0 z-10">
               <tr>
@@ -84,7 +91,7 @@
     </section>
 
     <!-- 右側圖表區 -->
-    <section class="xl:col-span-7 flex flex-col space-y-3">
+    <section class="xl:col-span-7 flex flex-col space-y-3 order-1 xl:order-2">
       
       <!-- 頂部控制列 -->
       <div class="bg-panel rounded-xl p-3 border border-slate-800 flex flex-wrap items-center justify-between gap-3">
@@ -101,8 +108,8 @@
           </div>
         </div>
 
-        <!-- 7 大時框按鈕 -->
-        <div class="flex items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800 font-mono text-xs" id="tf-selector">
+        <!-- 週期切換 -->
+        <div class="flex items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800 font-mono text-xs overflow-x-auto" id="tf-selector">
           <button onclick="changeTF('1m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="1m">1m</button>
           <button onclick="changeTF('5m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="5m">5m</button>
           <button onclick="changeTF('15m')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white" data-tf="15m">15m</button>
@@ -113,25 +120,23 @@
         </div>
       </div>
 
-      <!-- K 棒即時懸浮資訊抬頭 (HUD) -->
+      <!-- K 棒 HUD -->
       <div class="bg-slate-950/80 rounded-lg px-3 py-1.5 border border-slate-800/80 flex flex-wrap items-center justify-between text-[11px] font-mono">
-        <div class="flex items-center gap-3 text-slate-300" id="kline-hud">
-          <span>時間: <b class="text-slate-100" id="hud-time">--</b></span>
+        <div class="flex items-center gap-2.5 text-slate-300 overflow-x-auto" id="kline-hud">
+          <span>時: <b class="text-slate-100" id="hud-time">--</b></span>
           <span>開: <b class="text-slate-100" id="hud-open">--</b></span>
           <span>高: <b class="text-slate-100" id="hud-high">--</b></span>
           <span>低: <b class="text-slate-100" id="hud-low">--</b></span>
           <span>收: <b class="text-slate-100" id="hud-close">--</b></span>
-          <span>漲跌: <b id="hud-change">--</b></span>
+          <span id="hud-change">--</span>
         </div>
-        <div class="text-[10px] text-slate-500">按住滑鼠拖曳平移 · 滾輪縮放</div>
+        <div class="text-[10px] text-slate-500 hidden sm:block">右側上下拖曳拉伸價格 · 雙指捏合縮放</div>
       </div>
 
       <!-- 核心畫布容器 -->
       <div class="bg-panel rounded-xl border border-slate-800 overflow-hidden p-2 flex flex-col space-y-1" id="chart-viewport">
-        <!-- 主圖 K 棒 Canvas -->
-        <canvas id="candleCanvas" class="w-full" height="400"></canvas>
-        <!-- 副圖 MACD Canvas -->
-        <canvas id="macdCanvas" class="w-full" height="150"></canvas>
+        <canvas id="candleCanvas" class="w-full" height="380"></canvas>
+        <canvas id="macdCanvas" class="w-full" height="140"></canvas>
       </div>
     </section>
 
@@ -142,12 +147,23 @@
     let currentTF = '1d';
     let analyzedResults = [];
 
+    // 視窗平移與縮放參數
     let barWidth = 11;
     let barSpacing = 4;
     let offsetX = 0;
+    let priceScaleMultiplier = 1.0; // Y 軸拉伸係數 (支援上下拉伸價格)
+    let priceOffsetShift = 0;      // Y 軸上下平移量
+
     let isDragging = false;
+    let isScalingY = false;
     let dragStartX = 0;
+    let dragStartY = 0;
     let dragStartOffset = 0;
+    let dragStartPriceShift = 0;
+    let dragStartPriceScale = 1.0;
+
+    let initialPinchDist = null;
+    let initialBarWidth = 11;
     let mousePos = { x: -1, y: -1, inChart: false };
 
     const cCanvas = document.getElementById("candleCanvas");
@@ -158,14 +174,49 @@
     function setupInteractions() {
       const container = document.getElementById("chart-viewport");
 
+      // 滑鼠滾輪縮放 X 軸
+      container.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const rect = cCanvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const rightPadding = 75;
+
+        if (mouseX > rect.width - rightPadding) {
+          // 在右側價格軸滾動 -> 拉伸/壓縮 Y 軸
+          const factor = e.deltaY < 0 ? 1.1 : 0.9;
+          priceScaleMultiplier = Math.max(0.3, Math.min(3.5, priceScaleMultiplier * factor));
+        } else {
+          // 在 K 線區域滾動 -> 縮放 X 軸
+          const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
+          const newBarWidth = Math.max(3, Math.min(55, barWidth * zoomFactor));
+          barSpacing = Math.max(1, newBarWidth * 0.35);
+          barWidth = newBarWidth;
+        }
+        requestRender();
+      }, { passive: false });
+
+      // 滑鼠按下 (按右側 Y 軸拉伸價格，按左側平移走勢)
       container.addEventListener("mousedown", (e) => {
-        isDragging = true;
+        const rect = cCanvas.getBoundingClientRect();
+        const curX = e.clientX - rect.left;
+        const rightPadding = 75;
+
         dragStartX = e.clientX;
-        dragStartOffset = offsetX;
+        dragStartY = e.clientY;
+
+        if (curX > rect.width - rightPadding) {
+          isScalingY = true;
+          dragStartPriceScale = priceScaleMultiplier;
+          dragStartPriceShift = priceOffsetShift;
+        } else {
+          isDragging = true;
+          dragStartOffset = offsetX;
+        }
       });
 
       window.addEventListener("mouseup", () => {
         isDragging = false;
+        isScalingY = false;
       });
 
       container.addEventListener("mousemove", (e) => {
@@ -178,6 +229,10 @@
           const deltaX = e.clientX - dragStartX;
           offsetX = dragStartOffset - deltaX;
           requestRender();
+        } else if (isScalingY) {
+          const deltaY = e.clientY - dragStartY;
+          priceScaleMultiplier = Math.max(0.3, Math.min(4.0, dragStartPriceScale * (1 - deltaY * 0.005)));
+          requestRender();
         } else {
           requestRender();
         }
@@ -188,14 +243,76 @@
         requestRender();
       });
 
-      container.addEventListener("wheel", (e) => {
-        e.preventDefault();
-        const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
-        const newBarWidth = Math.max(3, Math.min(50, barWidth * zoomFactor));
-        barSpacing = Math.max(1, newBarWidth * 0.35);
-        barWidth = newBarWidth;
-        requestRender();
+      // 手機觸控事件 (單指平移/上下拉伸，雙指捏合縮放)
+      container.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 1) {
+          const touch = e.touches[0];
+          const rect = cCanvas.getBoundingClientRect();
+          const curX = touch.clientX - rect.left;
+          const rightPadding = 75;
+
+          dragStartX = touch.clientX;
+          dragStartY = touch.clientY;
+
+          if (curX > rect.width - rightPadding) {
+            isScalingY = true;
+            dragStartPriceScale = priceScaleMultiplier;
+          } else {
+            isDragging = true;
+            dragStartOffset = offsetX;
+          }
+          mousePos.x = curX;
+          mousePos.y = touch.clientY - rect.top;
+          mousePos.inChart = true;
+        } else if (e.touches.length === 2) {
+          isDragging = false;
+          isScalingY = false;
+          initialPinchDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          initialBarWidth = barWidth;
+        }
       }, { passive: false });
+
+      container.addEventListener("touchmove", (e) => {
+        e.preventDefault();
+        const rect = cCanvas.getBoundingClientRect();
+
+        if (e.touches.length === 1) {
+          const touch = e.touches[0];
+          mousePos.x = touch.clientX - rect.left;
+          mousePos.y = touch.clientY - rect.top;
+
+          if (isDragging) {
+            const deltaX = touch.clientX - dragStartX;
+            offsetX = dragStartOffset - deltaX;
+            requestRender();
+          } else if (isScalingY) {
+            const deltaY = touch.clientY - dragStartY;
+            priceScaleMultiplier = Math.max(0.3, Math.min(4.0, dragStartPriceScale * (1 - deltaY * 0.008)));
+            requestRender();
+          }
+        } else if (e.touches.length === 2 && initialPinchDist) {
+          const currentDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          const ratio = currentDist / initialPinchDist;
+          const newBarWidth = Math.max(3, Math.min(55, initialBarWidth * ratio));
+          barSpacing = Math.max(1, newBarWidth * 0.35);
+          barWidth = newBarWidth;
+          requestRender();
+        }
+      }, { passive: false });
+
+      container.addEventListener("touchend", () => {
+        isDragging = false;
+        isScalingY = false;
+        initialPinchDist = null;
+        mousePos.inChart = false;
+        requestRender();
+      });
 
       window.addEventListener("resize", resizeCanvases);
     }
@@ -249,9 +366,12 @@
         if (b.ema60) { minP = Math.min(minP, b.ema60); maxP = Math.max(maxP, b.ema60); }
         if (b.ema100) { minP = Math.min(minP, b.ema100); maxP = Math.max(maxP, b.ema100); }
       });
-      const pPadding = (maxP - minP) * 0.08 || 1;
-      minP -= pPadding;
-      maxP += pPadding;
+
+      // 融入 Y 軸手動拉伸倍率
+      const centerP = (maxP + minP) / 2;
+      const halfDiff = ((maxP - minP) / 2) / priceScaleMultiplier;
+      minP = centerP - halfDiff;
+      maxP = centerP + halfDiff;
 
       function getY(p) {
         return chartH - ((p - minP) / (maxP - minP)) * chartH;
@@ -260,7 +380,7 @@
         return maxP - (y / chartH) * (maxP - minP);
       }
 
-      // 背景網格與價格軸刻度
+      // 網格刻度
       cCtx.strokeStyle = "rgba(30, 41, 59, 0.4)";
       cCtx.lineWidth = 1;
       cCtx.fillStyle = "#64748b";
@@ -297,7 +417,7 @@
       drawEMA("ema60", "#818cf8");
       drawEMA("ema100", "#f43f5e");
 
-      // 繪製 K 棒與時間軸
+      // 繪製 K 棒
       cCtx.textAlign = "center";
       let lastDrawnTimeX = -100;
 
@@ -307,9 +427,8 @@
         const cx = x + barWidth / 2;
 
         const isUp = b.close >= b.open;
-        const color = isUp ? "#ef4444" : "#22c55e"; // 台股紅漲綠跌
+        const color = isUp ? "#ef4444" : "#22c55e";
 
-        // 影線
         cCtx.strokeStyle = color;
         cCtx.lineWidth = 1.2;
         cCtx.beginPath();
@@ -317,7 +436,6 @@
         cCtx.lineTo(cx, getY(b.low));
         cCtx.stroke();
 
-        // 實體
         const oY = getY(b.open);
         const cY = getY(b.close);
         const topY = Math.min(oY, cY);
@@ -325,8 +443,7 @@
         cCtx.fillStyle = color;
         cCtx.fillRect(x, topY, barWidth, bodyH);
 
-        // 時間座標刻度
-        if (cx - lastDrawnTimeX > 80) {
+        if (cx - lastDrawnTimeX > 75) {
           cCtx.fillStyle = "#64748b";
           cCtx.fillText(b.time, cx, h - 6);
           cCtx.strokeStyle = "rgba(30, 41, 59, 0.3)";
@@ -363,7 +480,6 @@
         cCtx.stroke();
         cCtx.setLineDash([]);
 
-        // 右側價格氣泡
         const hoveredPrice = getPriceAtY(mousePos.y);
         cCtx.fillStyle = "#0284c7";
         cCtx.fillRect(chartW, mousePos.y - 9, rightPadding, 18);
@@ -372,7 +488,6 @@
         cCtx.textAlign = "left";
         cCtx.fillText(`NT$ ${hoveredPrice.toFixed(1)}`, chartW + 4, mousePos.y + 4);
 
-        // 底部時間氣泡與 HUD
         const hoverIdx = Math.floor((mousePos.x + offsetX) / totalItemW);
         if (hoverIdx >= 0 && hoverIdx < bars.length) {
           const hb = bars[hoverIdx];
@@ -441,7 +556,6 @@
       mCtx.fillText("0.0", chartW + 6, zeroY + 3);
       mCtx.fillText((-maxAbs).toFixed(1), chartW + 6, chartH - 4);
 
-      // MACD 柱狀體
       for (let i = startIdx; i < endIdx; i++) {
         const b = bars[i];
         const x = i * totalItemW - offsetX;
@@ -563,6 +677,7 @@
       const bars = getActiveBars();
       const chartW = cCanvas.width - 75;
       offsetX = Math.max(0, bars.length * (barWidth + barSpacing) - chartW);
+      priceScaleMultiplier = 1.0;
 
       requestRender();
     }
@@ -580,6 +695,7 @@
       const bars = getActiveBars();
       const chartW = cCanvas.width - 75;
       offsetX = Math.max(0, bars.length * (barWidth + barSpacing) - chartW);
+      priceScaleMultiplier = 1.0;
 
       requestRender();
     }
