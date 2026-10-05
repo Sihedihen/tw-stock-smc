@@ -1,36 +1,37 @@
-name: 每日台股 SMC 數據自動更新
+name: 每4小時加密貨幣 SMC 自動量化分析
 
 on:
   schedule:
-    - cron: '30 8 * * 1-5'
-  workflow_dispatch:
+    - cron: '0 */4 * * *'  # 每 4 小時自動執行一次
+  workflow_dispatch:       # 支援隨時手動點擊 Run workflow
 
 permissions:
   contents: write
 
 jobs:
-  update-smc:
+  update-crypto:
     runs-on: ubuntu-latest
     steps:
       - name: 檢出代碼
         uses: actions/checkout@v4
 
-      - name: 設定 Python
+      - name: 設定 Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
       - name: 安裝套件
         run: |
+          python -m pip install --upgrade pip
           pip install yfinance pandas numpy
 
-      - name: 執行量化與全週期抓取
-        run: python update_smc.py
+      - name: 執行加密貨幣 SMC 運算與多週期抓取
+        run: python update_crypto_smc.py
 
-      - name: 推送數據
+      - name: 推送最新 crypto_data.json
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.json
-          git commit -m "更新全週期K棒數據 [skip ci]" || echo "無變更"
+          git add crypto_data.json
+          git commit -m "自動更新加密貨幣 4H/1H/15m/5m SMC 數據 [skip ci]" || echo "無變更"
           git push
