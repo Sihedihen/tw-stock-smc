@@ -490,4 +490,103 @@
         console.error(err);
         document.getElementById("scan-status").innerText = "讀取失敗";
         document.getElementById("crypto-table-body").innerHTML = `
-          <tr><td colspan="6" class="py-8 text-center text-rose-400">⚠ ${err.message}</td><
+          <tr><td colspan="6" class="py-8 text-center text-rose-400">⚠ ${err.message}</td></tr>
+        `;
+      } finally {
+        if (icon) icon.classList.remove("animate-spin");
+      }
+    }
+
+    function renderResults() {
+      const tbody = document.getElementById("crypto-table-body");
+      tbody.innerHTML = "";
+      document.getElementById("result-count").innerText = `共 ${analyzedResults.length} 檔`;
+
+      analyzedResults.forEach((c, idx) => {
+        const tr = document.createElement("tr");
+        tr.className = `cursor-pointer transition hover:bg-slate-800/60 stock-row ${idx === 0 ? 'selected' : ''}`;
+        tr.setAttribute("id", `row-${c.code}`);
+        tr.onclick = () => selectCrypto(c);
+
+        const score = c.confluenceScore || 0;
+        let scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-400">${score} / 6</span>`;
+        if (score >= 5) {
+          scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-950/80 text-rose-300 border border-rose-500/40">🔥 ${score} / 6 (極高)</span>`;
+        } else if (score >= 4) {
+          scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40">⚡ ${score} / 6 (高)</span>`;
+        } else if (score >= 3) {
+          scoreBadge = `<span class="px-2 py-0.5 rounded text-[11px] font-medium bg-sky-950/80 text-sky-300 border border-sky-500/30">${score} / 6 (中)</span>`;
+        }
+
+        tr.innerHTML = `
+          <td class="py-2.5 px-3">
+            <span class="font-bold text-slate-100">${c.code}</span>
+            <span class="text-slate-400 ml-1">${c.name}</span>
+          </td>
+          <td class="py-2.5 px-2 text-center">${scoreBadge}</td>
+          <td class="py-2.5 px-2 font-semibold text-slate-200">$${c.price}</td>
+          <td class="py-2.5 px-2 font-bold text-indigo-300">$${c.tp}</td>
+          <td class="py-2.5 px-2 text-center">
+            <span class="px-2 py-0.5 rounded text-[11px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30">
+              ${c.winRate}
+            </span>
+          </td>
+          <td class="py-2.5 px-2 text-right font-bold text-emerald-400">1 : ${c.rr || '2.0'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      lucide.createIcons();
+    }
+
+    function selectCrypto(c) {
+      currentCrypto = c;
+
+      document.querySelectorAll('.stock-row').forEach(r => r.classList.remove('selected'));
+      const activeRow = document.getElementById(`row-${c.code}`);
+      if (activeRow) activeRow.classList.add('selected');
+
+      document.getElementById("chart-symbol").innerText = `${c.code} / USDT (${c.name})`;
+      document.getElementById("chart-pattern-badge").innerText = `${c.macroTrend4H} · ${c.structure1H}`;
+      document.getElementById("chart-confluence-badge").innerText = `共振: ${c.confluenceScore}/6 (${c.confluenceDetails || '整理'})`;
+      document.getElementById("backtest-tag").innerText = `策略歷史勝率: ${c.winRate} (PF: ${c.profitFactor})`;
+
+      document.getElementById("plan-details").innerHTML = `
+        <p>• <b>4H 宏觀趨勢 (HTF Trend)</b>：${c.macroTrend4H}，以 4H 機構訂單塊 (Bullish OB) 底端作為防守，SL 設為 <b class="text-rose-400">$${c.sl}</b>（${c.obDate ? `OB 形成於 ${c.obDate}` : '結構起漲支撐'}）。</p>
+        <p>• <b>1H 中觀結構 (Structure)</b>：<span class="text-sky-300 font-medium">${c.structure1H}</span>。</p>
+        <p>• <b>15m / 5m 微觀進場點 (Entry Zone)</b>：等待回踩 1H/15m 折價區與 OB 共振點 <b class="text-sky-400">$${c.entryZone}</b> 掛單開多。</p>
+        <p>• <b>合約波段目標 (TP)</b>：大級別目標價為 <b class="text-indigo-300">$${c.tp}</b>，預期盈虧比 (RR) 達 <b class="text-emerald-400">1 : ${c.rr || '2.5'}</b>。</p>
+      `;
+
+      const bars = getActiveBars();
+      const chartW = cCanvas.width - 80;
+      offsetX = Math.max(0, bars.length * (barWidth + barSpacing) - chartW);
+
+      requestRender();
+    }
+
+    function changeTF(tf) {
+      currentTF = tf;
+      document.querySelectorAll('#tf-selector .tf-btn').forEach(btn => {
+        if (btn.getAttribute('data-tf') === tf) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      const bars = getActiveBars();
+      const chartW = cCanvas.width - 80;
+      offsetX = Math.max(0, bars.length * (barWidth + barSpacing) - chartW);
+
+      requestRender();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      setupInteractions();
+      resizeCanvases();
+      loadCryptoData();
+    });
+  </script>
+</body>
+</html>
